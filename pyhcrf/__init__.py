@@ -30,22 +30,24 @@ class HCRF(object):
     Includes methods for training using LM-BFGS, scoring, and testing, and
     helper methods for loading and saving parameter values to and from file.
     """
-    def __init__(self,
-                 num_states=2,
-                 l2_regularization=1.0,
-                 transitions=None,
-                 state_parameter_noise=0.001,
-                 transition_parameter_noise=0.001,
-                 optimizer_kwargs=None,
-                 sgd_stepsize=None,
-                 sgd_verbosity=None,
-                 random_seed=0,
-                 verbosity=0):
-        """
-        Initialize new HCRF object with hidden units with cardinality `num_states`.
-        """
+
+    def __init__(
+        self,
+        num_states=2,
+        l2_regularization=1.0,
+        transitions=None,
+        state_parameter_noise=0.001,
+        transition_parameter_noise=0.001,
+        optimizer_kwargs=None,
+        sgd_stepsize=None,
+        sgd_verbosity=None,
+        random_seed=0,
+        verbosity=0,
+    ):
+        """Instantiate a HCRF with hidden units of cardinality ``num_states``.
+        """    
         self.l2_regularization = l2_regularization
-        assert(num_states > 0)
+        assert num_states > 0
         self.num_states = num_states
         self.classes = None
         self.state_parameters = None
@@ -79,46 +81,78 @@ class HCRF(object):
         num_classes = len(classes)
         self.classes = classes
         if self.transitions is None:
-            self.transitions = self._create_default_transitions(num_classes, self.num_states)
+            self.transitions = self._create_default_transitions(
+                num_classes, self.num_states
+            )
 
         # Initialise the parameters
         _, num_features = X[0].shape
         num_transitions, _ = self.transitions.shape
         numpy.random.seed(self._random_seed)
         if self.state_parameters is None:
-            self.state_parameters = numpy.random.standard_normal((num_features,
-                                                                  self.num_states,
-                                                                  num_classes)) * self.state_parameter_noise
+            self.state_parameters = (
+                numpy.random.standard_normal(
+                    (num_features, self.num_states, num_classes)
+                )
+                * self.state_parameter_noise
+            )
         if self.transition_parameters is None:
-            self.transition_parameters = numpy.random.standard_normal((num_transitions)) * self.transition_parameter_noise
+            self.transition_parameters = (
+                numpy.random.standard_normal((num_transitions))
+                * self.transition_parameter_noise
+            )
 
-        initial_parameter_vector = self._stack_parameters(self.state_parameters, self.transition_parameters)
+        initial_parameter_vector = self._stack_parameters(
+            self.state_parameters, self.transition_parameters
+        )
         function_evaluations = [0]
 
-        def objective_function(parameter_vector, batch_start_index=0, batch_end_index=-1):
+        def objective_function(
+            parameter_vector, batch_start_index=0, batch_end_index=-1
+        ):
             ll = 0.0
             gradient = numpy.zeros_like(parameter_vector)
-            state_parameters, transition_parameters = self._unstack_parameters(parameter_vector)
+            state_parameters, transition_parameters = self._unstack_parameters(
+                parameter_vector
+            )
             for x, ty in list(zip(X, y))[batch_start_index:batch_end_index]:
                 y_index = classes.index(ty)
-                dll, dgradient_state, dgradient_transition = log_likelihood(x,
-                                                                            y_index,
-                                                                            state_parameters,
-                                                                            transition_parameters,
-                                                                            self.transitions)
-                dgradient = self._stack_parameters(dgradient_state, dgradient_transition)
+                dll, dgradient_state, dgradient_transition = log_likelihood(
+                    x,
+                    y_index,
+                    state_parameters,
+                    transition_parameters,
+                    self.transitions,
+                )
+                dgradient = self._stack_parameters(
+                    dgradient_state, dgradient_transition
+                )
                 ll += dll
                 gradient += dgradient
 
-            parameters_without_bias = numpy.array(parameter_vector)  # exclude the bias parameters from being regularized
+            parameters_without_bias = numpy.array(
+                parameter_vector
+            )  # exclude the bias parameters from being regularized
             parameters_without_bias[0] = 0
-            ll -= self.l2_regularization * numpy.dot(parameters_without_bias.T, parameters_without_bias)
-            gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters_without_bias
+            ll -= self.l2_regularization * numpy.dot(
+                parameters_without_bias.T, parameters_without_bias
+            )
+            gradient = (
+                gradient.flatten()
+                - 2.0 * self.l2_regularization * parameters_without_bias
+            )
 
             if batch_start_index == 0:
                 function_evaluations[0] += 1
-                if self._verbosity > 0 and function_evaluations[0] % self._verbosity == 0:
-                    print('{:10} {:10.2f} {:10.2f}'.format(function_evaluations[0], ll, sum(abs(gradient))))
+                if (
+                    self._verbosity > 0
+                    and function_evaluations[0] % self._verbosity == 0
+                ):
+                    print(
+                        "{:10} {:10.2f} {:10.2f}".format(
+                            function_evaluations[0], ll, sum(abs(gradient))
+                        )
+                    )
             return -ll, -gradient
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
@@ -130,10 +164,18 @@ class HCRF(object):
                 initial_parameter_vector -= ngradient * self._sgd_stepsize
                 if self._sgd_verbosity > 0:
                     if i % self._sgd_verbosity == 0:
-                        print('{:10} {:10.2f} {:10.2f}'.format(i, -total_nll / (i + 1) * len(y), sum(abs(ngradient))))
+                        print(
+                            "{:10} {:10.2f} {:10.2f}".format(
+                                i, -total_nll / (i + 1) * len(y), sum(abs(ngradient))
+                            )
+                        )
 
-        self._optimizer_result = fmin_l_bfgs_b(objective_function, initial_parameter_vector, **self.optimizer_kwargs)
-        self.state_parameters, self.transition_parameters = self._unstack_parameters(self._optimizer_result[0])
+        self._optimizer_result = fmin_l_bfgs_b(
+            objective_function, initial_parameter_vector, **self.optimizer_kwargs
+        )
+        self.state_parameters, self.transition_parameters = self._unstack_parameters(
+            self._optimizer_result[0]
+        )
         return self
 
     def predict(self, X):
@@ -150,7 +192,10 @@ class HCRF(object):
         y : iterable of shape = [n_samples]
             The predicted classes.
         """
-        return [self.classes[prediction.argmax()] for prediction in self.predict_marginals(X)]
+        return [
+            self.classes[prediction.argmax()]
+            for prediction in self.predict_marginals(X)
+        ]
 
     def predict_marginals(self, X):
         """Probability estimates.
@@ -172,10 +217,20 @@ class HCRF(object):
         for x in X:
             n_time_steps, n_features = x.shape
             _, n_states, n_classes = self.state_parameters.shape
-            x_dot_parameters = x.dot(self.state_parameters.reshape(n_features, -1)).reshape((n_time_steps, n_states, n_classes))
-            forward_table, _, _ = forward_backward(x_dot_parameters, self.state_parameters, self.transition_parameters, self.transitions)
+            x_dot_parameters = x.dot(
+                self.state_parameters.reshape(n_features, -1)
+            ).reshape((n_time_steps, n_states, n_classes))
+            forward_table, _, _ = forward_backward(
+                x_dot_parameters,
+                self.state_parameters,
+                self.transition_parameters,
+                self.transitions,
+            )
             # TODO: normalize by subtracting log-sum to avoid overflow
-            y.append(numpy.exp(forward_table[-1, -1, :]) / sum(numpy.exp(forward_table[-1, -1, :])))
+            y.append(
+                numpy.exp(forward_table[-1, -1, :])
+                / sum(numpy.exp(forward_table[-1, -1, :]))
+            )
         return numpy.array(y)
 
     @staticmethod
@@ -195,8 +250,10 @@ class HCRF(object):
                 if state > 0:
                     transitions.append([c, 0, state + 1])  # From the start state
                 if state < num_states - 1:
-                    transitions.append([c, state + 1, num_states - 1])  # To the end state
-        transitions = numpy.array(transitions, dtype='int64')
+                    transitions.append(
+                        [c, state + 1, num_states - 1]
+                    )  # To the end state
+        transitions = numpy.array(transitions, dtype="int64")
         return transitions
 
     @staticmethod
@@ -206,4 +263,7 @@ class HCRF(object):
     def _unstack_parameters(self, parameter_vector):
         state_parameter_shape = self.state_parameters.shape
         num_state_parameters = numpy.prod(state_parameter_shape)
-        return parameter_vector[:num_state_parameters].reshape(state_parameter_shape), parameter_vector[num_state_parameters:]
+        return (
+            parameter_vector[:num_state_parameters].reshape(state_parameter_shape),
+            parameter_vector[num_state_parameters:],
+        )
