@@ -1,4 +1,4 @@
-include COPYING
+include COPYING.md
 include CHANGELOG.md
 include README.md
 
