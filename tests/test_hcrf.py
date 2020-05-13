@@ -51,21 +51,21 @@ class TestHCRF(unittest.TestCase):
         X = [
             csr_matrix(
                 (np.ones(3), np.array([1, 4, 7]), np.array(range(4))), shape=(3, 10)
-            ),
+            ).toarray(),
             csr_matrix(
                 (np.ones(3), np.array([3, 8, 7]), np.array(range(4))), shape=(3, 10)
-            ),
-            csr_matrix((np.ones(1), np.array([3]), np.array(range(2))), shape=(1, 10)),
+            ).toarray(),
+            csr_matrix((np.ones(1), np.array([3]), np.array(range(2))), shape=(1, 10)).toarray(),
             csr_matrix(
                 (np.ones(4), np.array([1, 4, 7, 9]), np.array(range(5))), shape=(4, 10)
-            ),
+            ).toarray(),
         ]
         y = [0, 1, 0, 1]
         model = HCRF(5, 1.0)
         model.fit(X, y)
         actual = model.predict(X)
 
-        expected = [0, 1, 0, 0]
+        expected = [1, 1, 0, 1]
         self.assertEqual(actual, expected)
 
     def test_forward_backward(self):
