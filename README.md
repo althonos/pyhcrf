@@ -2,16 +2,41 @@
 
 *A hidden (state) conditional random field (__HCRF__) written in Python and Cython.*
 
+[![TravisCI](https://img.shields.io/travis/althonos/pyhcrf/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyhcrf/branches)
+[![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyhcrf?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyhcrf/)
+[![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
+[![PyPI](https://img.shields.io/pypi/v/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf)
+[![Wheel](https://img.shields.io/pypi/wheel/pyhcrf.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyhcrf/#files)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf/#files)
+[![Python Implementations](https://img.shields.io/pypi/implementation/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf/#files)
+[![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyhcrf/)
+[![GitHub issues](https://img.shields.io/github/issues/althonos/pyhcrf.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyhcrf/issues)
+[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyhcrf.py/blob/master/CHANGELOG.md)
+
 This package is a fork of the original `pyhcrf` written by
 [Dirko Coetsee](https://github.com/dirko) featuring Python 3 support and a
 cleaned code base, maintained by [Martin Larralde](https://github.com/althonos).
 
-It aims to implement the HCRF model with a `sklearn` type interface. The model
-classifies sequences according to a latent state sequence. This package provides
-methods to learn parameters from example sequences and to score new sequences.
-See the [paper](http://people.csail.mit.edu/sybor/cvpr06_wang.pdf) by Wang et al and the
-report [*Conditional Random Fields for Noisy text normalisation*](https://api.semanticscholar.org/CorpusID:61776334)
+## Overview
+
+`pyhcrf` implements a HCRF model with a [`sklearn`](https://scikit-learn.org/)-inspired
+interface. The model classifies sequences according to a latent state sequence.
+This package provides methods to learn parameters from example sequences and to
+classify new sequences. See the [paper](http://people.csail.mit.edu/sybor/cvpr06_wang.pdf)
+by Wang *et al.* and the [report](https://api.semanticscholar.org/CorpusID:61776334)
 by Dirko Coetsee.
+
+### States
+Each state is numbered `0, 1, ..., num_states - 1`. The state machine starts
+in `state 0` and ends in `num_states - 1`. Currently the state transitions are
+constrained so that, on each element in the input sequence, the state machine
+either stays in the current state or advances to a state represented by the
+next number.  This default can be changed by setting the `transitions` and
+corresponding `transition_parameters` properties.
+
+### Dependencies
+`pyhcrf` depends on `numpy`, `scipy` (for the LM-BFGS optimiser and `scipy.sparse`),
+and also needs `cython` for building from source.
 
 ## Example
 
@@ -44,31 +69,17 @@ y = [0, 1, 0, 1, 1, 0, 1, 0, 0, 0]
 ![Training examples](https://raw.githubusercontent.com/althonos/pyhcrf/master/static/training_examples.png)
 
 ```python
-from pyhcrf import HCRF
-from sklearn.metrics import confusion_matrix
+>>> from pyhcrf import HCRF
+>>> from sklearn.metrics import confusion_matrix
 
-model = Hcrf(num_states=3,
-             l2_regularization=1.0,
-             verbosity=10,
-             random_seed=3,
-             optimizer_kwargs={'maxfun':200})
-model.fit(X, y)
-pred = model.predict(X)
-confusion_matrix(y, pred)
-> array([[12,  0],
->        [ 0,  8]])
+>>> model = HCRF(num_states=3, random_seed=3, optimizer_kwargs={'maxfun':200})
+>>> model.fit(X, y)
+>>> pred = model.predict(X)
+>>> confusion_matrix(y, pred)
+array([[12,  0],
+      [ 0,  8]])
 ```
 
-## States
-Each state is numbered `0, 1, ..., num_states - 1`. The state machine starts in `state 0` and ends in `num_states - 1`.
-Currently the state transitions are constrained so that, on each element in the input sequence,
- the state machine either stays in the current state or
-advances to a state represented by the next number.
- This default can be changed by setting the `transitions` and corresponding
-`transition_parameters` properties.
-
-## Dependencies
-`numpy`, `scipy` (for the LM-BFGS optimiser and `scipy.sparse`), and `cython`.
 
 ## Installation
 Download/clone and run
@@ -77,3 +88,10 @@ Download/clone and run
 python setup.py build_ext --inplace
 python setup.py install
 ```
+
+
+## License
+
+The original code is unclear about being licensed with either GPL or BSD-2-Clause.
+As such, this fork assumes the more conservative license of the two, and is
+therefore licensed GPLv3.
