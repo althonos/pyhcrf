@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 . $(dirname $0)/functions.sh
 
 # --- Update GitHub release notes --------------------------------------------
