@@ -1,0 +1,8 @@
+coverage ~=5.0
+codecov ~=2.0
+cython ~=0.29.16
+numpy ~=1.9
+
+auditwheel
+twine
+setuptools
