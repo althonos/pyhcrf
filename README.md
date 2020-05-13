@@ -5,7 +5,7 @@
 [![TravisCI](https://img.shields.io/travis/althonos/pyhcrf/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyhcrf/branches)
 [![AppVeyor](https://img.shields.io/appveyor/ci/althonos/pyhcrf/master?logo=appveyor&style=flat-square&maxAge=600)](https://ci.appveyor.com/project/althonos/pyhcrf)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyhcrf?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyhcrf/)
-[![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
+[![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/bsd-2-clause/)
 [![PyPI](https://img.shields.io/pypi/v/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf)
 [![Wheel](https://img.shields.io/pypi/wheel/pyhcrf.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyhcrf/#files)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf/#files)
@@ -93,6 +93,5 @@ python setup.py install
 
 ## License
 
-The original code is unclear about being licensed with either GPL or BSD-2-Clause.
-As such, this fork assumes the more conservative license of the two, and is
-therefore licensed GPLv3.
+The original code, and all contributions made subsequently in this fork, are
+licensed with BSD-2-Clause.
