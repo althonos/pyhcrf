@@ -46,17 +46,27 @@ class HCRF(object):
         if num_states <= 0:
             raise ValueError("num_states must be strictly positive, not {}".format(num_states))
 
+        # Make sure to store transitions in a numpy array of `int64`,
+        # otherwise could cause error when calling `_algorithms` functions.
+        if transitions is not None:
+            self.transitions = numpy.array(transitions, dtype="int64")
+        else:
+            self.transitions = transitions
+
         self.l2_regularization = l2_regularization
         self.num_states = num_states
         self.classes = None
         self.state_parameters = None
         self.transition_parameters = None
-        self.transitions = transitions
         self.state_parameter_noise = state_parameter_noise
         self.transition_parameter_noise = transition_parameter_noise
         self.optimizer_kwargs = optimizer_kwargs if optimizer_kwargs else {}
         self.sgd_stepsize = sgd_stepsize
         self._random_seed = random_seed
+
+
+
+
 
     def fit(self, X, y):
         """Fit the model according to the given training data.

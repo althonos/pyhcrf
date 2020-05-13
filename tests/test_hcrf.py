@@ -77,7 +77,8 @@ class TestHCRF(unittest.TestCase):
                 [1, 1, 1, 3],
                 [0, 1, 0, 4],
                 [1, 1, 0, 5],
-            ]
+            ],
+            dtype="int64",
         )
         transition_parameters = np.array([1, 0, 2, 1, 3, -2], dtype="float64")
         x = np.array([[2, 3], [1, 0], [0, 2]], dtype="float64")
@@ -138,7 +139,7 @@ class TestHCRF(unittest.TestCase):
         )
 
     def test_gradient_small_transition(self):
-        transitions = np.array([[0, 0, 0, 0], [1, 0, 0, 1]])
+        transitions = np.array([[0, 0, 0, 0], [1, 0, 0, 1]], dtype="int64")
         transition_parameters = np.array([1, 0], dtype="float64")
         x = np.array([[2, 3, -1]], dtype="float64").reshape(1, 3)
         state_parameters = np.array([[[-1, 2]], [[5, -6]], [[2, 13]]], dtype="float64")
@@ -169,7 +170,8 @@ class TestHCRF(unittest.TestCase):
                 [1, 1, 1, 3],
                 [0, 1, 0, 4],
                 [1, 1, 0, 5],
-            ]
+            ],
+            dtype="int64"
         )
         transition_parameters = np.array([1, 0, 2, 1, 3, -2], dtype="float64")
         x = np.array([[2, 3, -1]], dtype="float64").reshape(1, 3)
@@ -203,7 +205,8 @@ class TestHCRF(unittest.TestCase):
                 [1, 1, 1, 3],
                 [0, 1, 0, 4],
                 [1, 1, 0, 5],
-            ]
+            ],
+            "int64",
         )
         transition_parameters = np.array([1, 0, 2, 1, 3, -2], dtype="float64")
         x = np.array([[2, 3, -1], [1, 4, -2], [5, 2, -3], [-2, 5, 3]], dtype="float64")
@@ -243,7 +246,8 @@ class TestHCRF(unittest.TestCase):
                 [1, 1, 1, 3],
                 [0, 1, 0, 4],
                 [1, 1, 0, 5],
-            ]
+            ],
+            dtype="int64"
         )
         transition_parameters = np.array([1, -5, 20, 1, 3, -2], dtype="float64")
         x = np.array([[-2, 3, -1], [1, 4, -2], [4, -4, 2], [3, 5, 3]], dtype="float64")
