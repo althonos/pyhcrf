@@ -1,0 +1,28 @@
+version: '0.1.0-rev{build}'
+clone_depth: 5
+environment:
+  TARGET: x86_64-pc-windows-msvc
+  RUST_BACKTRACE: full
+  matrix:
+  - PYTHON: "C:\\Python35-x64"
+  - PYTHON: "C:\\Python36-x64"
+  - PYTHON: "C:\\Python37-x64"
+  - PYTHON: "C:\\Python38-x64"
+
+install:
+- pip install -U -r ci/requirements.txt
+
+before_build:
+- python -V
+
+build_script:
+- python setup.py build_ext --inplace --debug
+
+test_script:
+- python setup.py test
+
+before_deploy:
+- python setup.py bdist_wheel
+
+deploy_script:
+- ps: .\ci\appveyor\deploy.ps1
