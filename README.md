@@ -3,6 +3,7 @@
 *A hidden (state) conditional random field (__HCRF__) written in Python and Cython.*
 
 [![TravisCI](https://img.shields.io/travis/althonos/pyhcrf/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyhcrf/branches)
+[![AppVeyor](https://img.shields.io/appveyor/ci/althonos/pyhcrf/master?logo=appveyor&style=flat-square&maxAge=600)](https://ci.appveyor.com/project/althonos/pyhcrf)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyhcrf?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyhcrf/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/gpl-3.0/)
 [![PyPI](https://img.shields.io/pypi/v/pyhcrf.svg?style=flat-square&maxAge=600)](https://pypi.org/project/pyhcrf)
@@ -13,9 +14,9 @@
 [![GitHub issues](https://img.shields.io/github/issues/althonos/pyhcrf.svg?style=flat-square&maxAge=600)](https://github.com/althonos/pyhcrf/issues)
 [![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/althonos/pyhcrf.py/blob/master/CHANGELOG.md)
 
-This package is a fork of the original `pyhcrf` written by
-[Dirko Coetsee](https://github.com/dirko) featuring Python 3 support and a
-cleaned code base, maintained by [Martin Larralde](https://github.com/althonos).
+This package is a fork of the original `pyhcrf`, written by
+[Dirko Coetsee](https://github.com/dirko), featuring Python 3 and Windows support
+with a cleaner code base maintained by [Martin Larralde](https://github.com/althonos).
 
 ## Overview
 
