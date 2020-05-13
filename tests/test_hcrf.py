@@ -3,9 +3,10 @@ import unittest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 import numpy as np
 from scipy.sparse import csr_matrix
+
 from pyhcrf import Hcrf
-from pyhcrf.hcrf import forward_backward
-from pyhcrf.hcrf import log_likelihood
+from pyhcrf._algorithms import forward_backward, log_likelihood
+
 
 TEST_PRECISION = 3
 
@@ -19,8 +20,7 @@ class TestHcrf(unittest.TestCase):
              np.array([[1, 1], [5, 3], [4, 2], [3.0, 3]], dtype='float64')]
         y = [0, 1, 0, 1]
         model = Hcrf(3)
-        print X[0].dtype
-        print
+        print(X[0].dtype)
         model.fit(X, y)
         actual = model.predict(X)
 
@@ -56,8 +56,8 @@ class TestHcrf(unittest.TestCase):
                                       [1, -1]],
                                      [[0, -2],
                                       [2, 3]]], dtype='float64')
-        print 'X.L'
-        print np.dot(x, state_parameters)
+        print('X.L')
+        print(np.dot(x, state_parameters))
         A = np.zeros((4, 2, 2), dtype='float64')
         # T  S  W
         # 5, 2, 2
@@ -96,8 +96,8 @@ class TestHcrf(unittest.TestCase):
                                             transition_parameters,
                                             transitions)
         #print np.log(A)
-        print (forward_table)
-        print backward_table
+        print(forward_table)
+        print(backward_table)
         np.testing.assert_array_almost_equal(forward_table, expected_forward_table)
         self.assertAlmostEqual(forward_table[-1, -1, 0], backward_table[0, 0, 0], places=5)
         self.assertAlmostEqual(forward_table[-1, -1, 1], backward_table[0, 0, 1], places=5)
@@ -120,7 +120,7 @@ class TestHcrf(unittest.TestCase):
             ll1, _, dtp1 = log_likelihood(x, cy, state_parameters, transition_parameters + tpd, transitions)
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print trans, '    ', expected_der, actual_der#, dsp0
+            print(trans, '    ', expected_der, actual_der)#, dsp0)
             #print ll1, ll0, delta
             self.assertAlmostEqual(expected_der, actual_der, places=2)
 
@@ -149,7 +149,7 @@ class TestHcrf(unittest.TestCase):
             ll1, _, dtp1 = log_likelihood(x, cy, state_parameters, transition_parameters + tpd, transitions)
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print trans, '    ', expected_der, actual_der#, dsp0
+            print(trans, '    ', expected_der, actual_der)#, dsp0)
             #print ll1, ll0, delta
             self.assertAlmostEqual(expected_der, actual_der, places=2)
 
@@ -184,7 +184,7 @@ class TestHcrf(unittest.TestCase):
                     ll1, dsp1, _ = log_likelihood(x, cy, state_parameters + spd, transition_parameters, transitions)
                     expected_der = (ll1 - ll0) / delta
                     actual_der = dsp0[k, s, w]
-                    print k, s, w, '    ', expected_der, actual_der#, dsp0
+                    print(k, s, w, '    ', expected_der, actual_der)#, dsp0)
                     self.assertAlmostEqual(expected_der, actual_der, places=2)
 
     def test_gradient_large_transition(self):
@@ -214,7 +214,7 @@ class TestHcrf(unittest.TestCase):
             ll1, _, dtp1 = log_likelihood(x, cy, state_parameters, transition_parameters + tpd, transitions)
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print trans, '    ', expected_der, actual_der#, dsp0
+            print(trans, '    ', expected_der, actual_der)#, dsp0)
             #print ll1, ll0, delta
             #all_ders.append(abs(expected_der - actual_der) < 10.0**-2)
             self.assertAlmostEqual(expected_der, actual_der, places=2)

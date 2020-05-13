@@ -106,7 +106,7 @@ class Hcrf(object):
             if batch_start_index == 0:
                 function_evaluations[0] += 1
                 if self._verbosity > 0 and function_evaluations[0] % self._verbosity == 0:
-                    print '{:10} {:10.2f} {:10.2f}'.format(function_evaluations[0], ll, sum(abs(gradient)))
+                    print('{:10} {:10.2f} {:10.2f}'.format(function_evaluations[0], ll, sum(abs(gradient))))
             return -ll, -gradient
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
@@ -118,7 +118,7 @@ class Hcrf(object):
                 initial_parameter_vector -= ngradient * self._sgd_stepsize
                 if self._sgd_verbosity > 0:
                     if i % self._sgd_verbosity == 0:
-                        print '{:10} {:10.2f} {:10.2f}'.format(i, -total_nll / (i + 1) * len(y), sum(abs(ngradient)))
+                        print('{:10} {:10.2f} {:10.2f}'.format(i, -total_nll / (i + 1) * len(y), sum(abs(ngradient))))
 
         self._optimizer_result = fmin_l_bfgs_b(objective_function, initial_parameter_vector, **self.optimizer_kwargs)
         self.state_parameters, self.transition_parameters = self._unstack_parameters(self._optimizer_result[0])
