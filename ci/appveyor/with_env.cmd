@@ -1,6 +1,7 @@
 :: Author:  Lisandro Dalcin
 :: Contact: dalcinl@gmail.com
 :: Credits: Olivier Grisel and Kyle Kastner
+@ECHO OFF
 
 SET COMMAND_TO_RUN=%*
 
