@@ -28,6 +28,15 @@ class HCRF(object):
 
     Includes methods for training using LM-BFGS, scoring, and testing, and
     helper methods for loading and saving parameter values to and from file.
+
+    Attributes:
+        classes_ (list of str, optional): The list of classes known by the
+            model. It contains all class labels given when the model was fit,
+            or `None` is the model has not been fitted yet.
+        attributes_ (list of str, optional): The list of features known by the
+            model. It contains all features given when the model was fit,
+            or `None` if the model has not been fitted yet.
+
     """
 
     def __init__(
@@ -53,9 +62,14 @@ class HCRF(object):
         else:
             self.transitions = transitions
 
+        # Attributes provided for compatibility with sklearn_crfsuite.CRF
+        self.classes_ = None
+        self.attributes_ = None
+        self.algorithm = "lbsgf"
+
+        # Other parameters
         self.l2_regularization = l2_regularization
         self.num_states = num_states
-        self.classes = None
         self.state_parameters = None
         self.transition_parameters = None
         self.state_parameter_noise = state_parameter_noise
@@ -63,10 +77,6 @@ class HCRF(object):
         self.optimizer_kwargs = optimizer_kwargs if optimizer_kwargs else {}
         self.sgd_stepsize = sgd_stepsize
         self._random_seed = random_seed
-
-
-
-
 
     def fit(self, X, y):
         """Fit the model according to the given training data.
@@ -84,9 +94,9 @@ class HCRF(object):
         self : object
             Returns self.
         """
-        classes = list(set(y))
-        num_classes = len(classes)
-        self.classes = classes
+        self.classes_ = list(set(y))
+        num_classes = len(self.classes_)
+        classes_map = {cls:i for i,cls in enumerate(self.classes_)}
         if self.transitions is None:
             self.transitions = self._create_default_transitions(
                 num_classes, self.num_states
@@ -114,16 +124,14 @@ class HCRF(object):
         )
         function_evaluations = [0]
 
-        def objective_function(
-            parameter_vector, batch_start_index=0, batch_end_index=-1
-        ):
+        def objective_function(parameter_vector):
             ll = 0.0
             gradient = numpy.zeros_like(parameter_vector)
             state_parameters, transition_parameters = self._unstack_parameters(
                 parameter_vector
             )
-            for x, ty in list(zip(X, y))[batch_start_index:batch_end_index]:
-                y_index = classes.index(ty)
+            for x, ty in zip(X, y):
+                y_index = classes_map[ty]
                 dll, dgradient_state, dgradient_transition = log_likelihood(
                     x,
                     y_index,
@@ -148,8 +156,7 @@ class HCRF(object):
                 - 2.0 * self.l2_regularization * parameters_without_bias
             )
 
-            if batch_start_index == 0:
-                function_evaluations[0] += 1
+            function_evaluations[0] += 1
             return -ll, -gradient
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
@@ -183,7 +190,7 @@ class HCRF(object):
             The predicted classes.
         """
         return [
-            self.classes[prediction.argmax()]
+            self.classes_[prediction.argmax()]
             for prediction in self.predict_marginals(X)
         ]
 
@@ -201,7 +208,7 @@ class HCRF(object):
         -------
         T : array-like, shape = [n_samples, n_classes]
             Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in ``self.classes``.
+            where classes are ordered as they are in ``self.classes_``.
         """
         y = []
         for x in X:
