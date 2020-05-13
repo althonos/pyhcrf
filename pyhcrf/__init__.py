@@ -24,8 +24,7 @@ from ._algorithms import forward_backward, log_likelihood
 
 
 class HCRF(object):
-    """
-    The HCRF model.
+    """The HCRF model.
 
     Includes methods for training using LM-BFGS, scoring, and testing, and
     helper methods for loading and saving parameter values to and from file.
@@ -40,14 +39,14 @@ class HCRF(object):
         transition_parameter_noise=0.001,
         optimizer_kwargs=None,
         sgd_stepsize=None,
-        sgd_verbosity=None,
         random_seed=0,
-        verbosity=0,
     ):
         """Instantiate a HCRF with hidden units of cardinality ``num_states``.
-        """    
+        """
+        if num_states <= 0:
+            raise ValueError(f"num_states must be strictly positive, not {num_states}")
+
         self.l2_regularization = l2_regularization
-        assert num_states > 0
         self.num_states = num_states
         self.classes = None
         self.state_parameters = None
@@ -56,18 +55,16 @@ class HCRF(object):
         self.state_parameter_noise = state_parameter_noise
         self.transition_parameter_noise = transition_parameter_noise
         self.optimizer_kwargs = optimizer_kwargs if optimizer_kwargs else {}
-        self._sgd_stepsize = sgd_stepsize
-        self._sgd_verbosity = sgd_verbosity
+        self.sgd_stepsize = sgd_stepsize
         self._random_seed = random_seed
-        self._verbosity = verbosity
 
     def fit(self, X, y):
         """Fit the model according to the given training data.
 
         Parameters
         ----------
-        X : List of list of ints. Each list of ints represent a training example. Each int in that list
-            is the index of a one-hot encoded feature.
+        X : List of list of ints. Each list of ints represent a training example.
+            Each int in that list must be the index of a one-hot encoded feature.
 
         y : array-like, shape (n_samples,)
             Target vector relative to X.
@@ -130,9 +127,8 @@ class HCRF(object):
                 ll += dll
                 gradient += dgradient
 
-            parameters_without_bias = numpy.array(
-                parameter_vector
-            )  # exclude the bias parameters from being regularized
+            # exclude the bias parameters from being regularized
+            parameters_without_bias = numpy.array(parameter_vector)
             parameters_without_bias[0] = 0
             ll -= self.l2_regularization * numpy.dot(
                 parameters_without_bias.T, parameters_without_bias
@@ -144,31 +140,15 @@ class HCRF(object):
 
             if batch_start_index == 0:
                 function_evaluations[0] += 1
-                if (
-                    self._verbosity > 0
-                    and function_evaluations[0] % self._verbosity == 0
-                ):
-                    print(
-                        "{:10} {:10.2f} {:10.2f}".format(
-                            function_evaluations[0], ll, sum(abs(gradient))
-                        )
-                    )
             return -ll, -gradient
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
-        if self._sgd_stepsize:
+        if self.sgd_stepsize is not None:
             total_nll = 0.0
             for i in range(len(y)):
                 nll, ngradient = objective_function(initial_parameter_vector, i, i + 1)
                 total_nll += nll
-                initial_parameter_vector -= ngradient * self._sgd_stepsize
-                if self._sgd_verbosity > 0:
-                    if i % self._sgd_verbosity == 0:
-                        print(
-                            "{:10} {:10.2f} {:10.2f}".format(
-                                i, -total_nll / (i + 1) * len(y), sum(abs(ngradient))
-                            )
-                        )
+                initial_parameter_vector -= ngradient * self.sgd_stepsize
 
         self._optimizer_result = fmin_l_bfgs_b(
             objective_function, initial_parameter_vector, **self.optimizer_kwargs

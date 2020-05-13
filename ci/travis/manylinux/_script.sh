@@ -11,7 +11,7 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$PYTHON_LIB"
 
 cd /io
 $PYTHON_SYS_EXECUTABLE setup.py build_ext --inplace --debug
-$PYTHON_SYS_EXECUTABLE -m coverage run -p -m unittest discover -v
+$PYTHON_SYS_EXECUTABLE -m coverage run -p -m unittest discover -b -v
 $PYTHON_SYS_EXECUTABLE -m coverage combine
 $PYTHON_SYS_EXECUTABLE -m coverage xml
 $PYTHON_SYS_EXECUTABLE -m coverage report
