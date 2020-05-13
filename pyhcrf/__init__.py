@@ -44,7 +44,7 @@ class HCRF(object):
         """Instantiate a HCRF with hidden units of cardinality ``num_states``.
         """
         if num_states <= 0:
-            raise ValueError(f"num_states must be strictly positive, not {num_states}")
+            raise ValueError("num_states must be strictly positive, not {}".format(num_states))
 
         self.l2_regularization = l2_regularization
         self.num_states = num_states

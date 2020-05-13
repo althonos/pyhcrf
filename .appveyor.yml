@@ -7,7 +7,6 @@ environment:
     PYTHONIOENCODING: utf-8
     WITH_ENV: "cmd /E:ON /V:ON /C .\\ci\\appveyor\\with_env.cmd"
     BACKEND: c
-    PARALLEL: "-j4"
   matrix:
   - PYTHON: "C:\\Python35-x64"
     PYTHON_VERSION: "3.5"
