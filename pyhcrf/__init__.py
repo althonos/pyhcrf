@@ -36,7 +36,7 @@ class HCRF(object):
         self.l2_regularization = l2_regularization
         assert(num_states > 0)
         self.num_states = num_states
-        self.classes_ = None
+        self.classes = None
         self.state_parameters = None
         self.transition_parameters = None
         self.transitions = transitions
@@ -66,7 +66,7 @@ class HCRF(object):
         """
         classes = list(set(y))
         num_classes = len(classes)
-        self.classes_ = classes
+        self.classes = classes
         if self.transitions is None:
             self.transitions = self._create_default_transitions(num_classes, self.num_states)
 
@@ -139,7 +139,7 @@ class HCRF(object):
         y : iterable of shape = [n_samples]
             The predicted classes.
         """
-        return [self.classes_[prediction.argmax()] for prediction in self.predict_proba(X)]
+        return [self.classes[prediction.argmax()] for prediction in self.predict_marginals(X)]
 
     def predict_marginals(self, X):
         """Probability estimates.
@@ -155,7 +155,7 @@ class HCRF(object):
         -------
         T : array-like, shape = [n_samples, n_classes]
             Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in ``self.classes_``.
+            where classes are ordered as they are in ``self.classes``.
         """
         y = []
         for x in X:
