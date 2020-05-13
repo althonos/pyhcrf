@@ -10,19 +10,20 @@ environment:
   - PYTHON: "C:\\Python38-x64"
 
 install:
-- pip install -U -r ci/requirements.txt
+- ps: .\ci\appveyor\install.ps1
+- "%PYTHON%\\python.exe -m pip install -U -r ci/requirements.txt"
 
 before_build:
-- python -V
+- "%PYTHON%\\python.exe -V"
 
 build_script:
-- python setup.py build_ext --inplace --debug
+- "%PYTHON%\\python.exe setup.py build_ext --inplace --debug"
 
 test_script:
-- python setup.py test
+- "%PYTHON%\\python.exe setup.py test"
 
 before_deploy:
-- python setup.py bdist_wheel
+- "%PYTHON%\\python.exe setup.py sdist bdist_wheel"
 
 deploy_script:
 - ps: .\ci\appveyor\deploy.ps1
