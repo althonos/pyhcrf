@@ -80,7 +80,7 @@ deploy:
   on:
     tags: true
     branch: master
-    repo: althonos/pyrodigal
+    repo: althonos/pyhcrf
 
 notifications:
   email:
