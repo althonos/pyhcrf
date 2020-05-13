@@ -1,11 +1,17 @@
-# `pyHCRF`
+# `pyhcrf`
 
-*A hidden (state) conditional random field (HCRF) implementation written in Python and Cython.*
+*A hidden (state) conditional random field (__HCRF__) written in Python and Cython.*
 
-This package aims to implement the HCRF model with a `sklearn` type interface. The model classifies sequences
-according to a latent state sequence. This package provides methods to learn parameters from example sequences and
-to score new sequences. See the [paper](http://people.csail.mit.edu/sybor/cvpr06_wang.pdf) by Wang et al and the
-report *Conditional Random Fields for Noisy text normalisation* by Dirko Coetsee.
+This package is a fork of the original `pyhcrf` written by
+[Dirko Coetsee](https://github.com/dirko) featuring Python 3 support and a
+cleaned code base, maintained by [Martin Larralde](https://github.com/althonos).
+
+It aims to implement the HCRF model with a `sklearn` type interface. The model
+classifies sequences according to a latent state sequence. This package provides
+methods to learn parameters from example sequences and to score new sequences.
+See the [paper](http://people.csail.mit.edu/sybor/cvpr06_wang.pdf) by Wang et al and the
+report [*Conditional Random Fields for Noisy text normalisation*](https://api.semanticscholar.org/CorpusID:61776334)
+by Dirko Coetsee.
 
 ## Example
 
@@ -35,7 +41,7 @@ X = [array([[ 1. , -0.82683403,  2.48881337],
 y = [0, 1, 0, 1, 1, 0, 1, 0, 0, 0]
 ```
 
-![Training examples](training_examples.png "Training examples")
+![Training examples](https://raw.githubusercontent.com/althonos/pyhcrf/master/static/training_examples.png)
 
 ```python
 from pyhcrf import Hcrf
