@@ -1,7 +1,6 @@
-`pyHCRF`
-==================
+# `pyHCRF`
 
-A hidden (state) conditional random field (HCRF) implementation written in Python and Cython.
+*A hidden (state) conditional random field (HCRF) implementation written in Python and Cython.*
 
 This package aims to implement the HCRF model with a `sklearn` type interface. The model classifies sequences
 according to a latent state sequence. This package provides methods to learn parameters from example sequences and
