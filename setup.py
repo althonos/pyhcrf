@@ -1,8 +1,8 @@
 import configparser
 import sys
 
-import setuptools
 import numpy
+import setuptools
 from Cython.Build import cythonize
 from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.sdist import sdist as _sdist

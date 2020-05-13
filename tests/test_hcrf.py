@@ -1,12 +1,11 @@
 import unittest
 
-from numpy.testing import assert_array_almost_equal, assert_array_equal
 import numpy as np
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 from scipy.sparse import csr_matrix
 
 from pyhcrf import HCRF
 from pyhcrf._algorithms import forward_backward, log_likelihood
-
 
 TEST_PRECISION = 3
 
