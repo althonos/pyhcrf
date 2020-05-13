@@ -1,29 +1,38 @@
 version: '0.1.0-rev{build}'
 clone_depth: 5
 environment:
-  TARGET: x86_64-pc-windows-msvc
-  RUST_BACKTRACE: full
+  global:
+    TARGET: x86_64-pc-windows-msvc
+    PYTHON_ARCH: 64
+    PYTHONIOENCODING: utf-8
+    WITH_ENV: "cmd /E:ON /V:ON /C .\\ci\\appveyor\\with_env.cmd"
+    BACKEND: c
+    PARALLEL: "-j4"
   matrix:
   - PYTHON: "C:\\Python35-x64"
+    PYTHON_VERSION: "3.5"
   - PYTHON: "C:\\Python36-x64"
+    PYTHON_VERSION: "3.6"
   - PYTHON: "C:\\Python37-x64"
+    PYTHON_VERSION: "3.7"
   - PYTHON: "C:\\Python38-x64"
+    PYTHON_VERSION: "3.8"
 
 install:
 - ps: .\ci\appveyor\install.ps1
-- "%PYTHON%\\python.exe -m pip install -U -r ci/requirements.txt"
+- "%WITH_ENV% %PYTHON%\\python.exe -m pip install -U -r ci/requirements.txt"
 
 before_build:
-- "%PYTHON%\\python.exe -V"
+- "%WITH_ENV% %PYTHON%\\python.exe -V"
 
 build_script:
-- "%PYTHON%\\python.exe setup.py build_ext --inplace --debug"
+- "%WITH_ENV% %PYTHON%\\python.exe setup.py build_ext --inplace"
 
 test_script:
-- "%PYTHON%\\python.exe setup.py test"
+- "%WITH_ENV% %PYTHON%\\python.exe setup.py test"
 
 before_deploy:
-- "%PYTHON%\\python.exe setup.py sdist bdist_wheel"
+- "%WITH_ENV% %PYTHON%\\python.exe setup.py sdist bdist_wheel"
 
 deploy_script:
 - ps: .\ci\appveyor\deploy.ps1
