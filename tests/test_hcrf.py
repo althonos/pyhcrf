@@ -4,14 +4,14 @@ from numpy.testing import assert_array_almost_equal, assert_array_equal
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from pyhcrf import Hcrf
+from pyhcrf import HCRF
 from pyhcrf._algorithms import forward_backward, log_likelihood
 
 
 TEST_PRECISION = 3
 
 
-class TestHcrf(unittest.TestCase):
+class TestHCRF(unittest.TestCase):
     def test_train_regression(self):
         # Lets add a test just to get everything working so we can refactor.
         X = [np.array([[1, 2], [5, 9], [7, 3.0]], dtype='float64'),
@@ -19,7 +19,7 @@ class TestHcrf(unittest.TestCase):
              np.array([[1, -1.0]], dtype='float64'),
              np.array([[1, 1], [5, 3], [4, 2], [3.0, 3]], dtype='float64')]
         y = [0, 1, 0, 1]
-        model = Hcrf(3)
+        model = HCRF(3)
         print(X[0].dtype)
         model.fit(X, y)
         actual = model.predict(X)
@@ -34,7 +34,7 @@ class TestHcrf(unittest.TestCase):
              csr_matrix((np.ones(1), np.array([3]), np.array(range(2))), shape=(1, 10)),
              csr_matrix((np.ones(4), np.array([1, 4, 7, 9]), np.array(range(5))), shape=(4, 10))]
         y = [0, 1, 0, 1]
-        model = Hcrf(5, 1.0)
+        model = HCRF(5, 1.0)
         model.fit(X, y)
         actual = model.predict(X)
 

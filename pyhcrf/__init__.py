@@ -12,7 +12,7 @@ from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from ._algorithms import forward_backward, log_likelihood
 
 
-class Hcrf(object):
+class HCRF(object):
     """
     The HCRF model.
 

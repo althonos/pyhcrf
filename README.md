@@ -44,7 +44,7 @@ y = [0, 1, 0, 1, 1, 0, 1, 0, 0, 0]
 ![Training examples](https://raw.githubusercontent.com/althonos/pyhcrf/master/static/training_examples.png)
 
 ```python
-from pyhcrf import Hcrf
+from pyhcrf import HCRF
 from sklearn.metrics import confusion_matrix
 
 model = Hcrf(num_states=3,
