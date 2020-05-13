@@ -141,7 +141,7 @@ class Hcrf(object):
         """
         return [self.classes_[prediction.argmax()] for prediction in self.predict_proba(X)]
 
-    def predict_proba(self, X):
+    def predict_marginals(self, X):
         """Probability estimates.
 
         The returned estimates for all classes are ordered by the
