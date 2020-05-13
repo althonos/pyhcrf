@@ -1,11 +1,11 @@
-# TODOcython: boundscheck=False, wraparound=False, initializedcheck=False
+# coding: utf-8
+# cython: language_level=3, linetrace=True
 
-import numpy as np
-cimport numpy as np
-from numpy import ndarray
 from numpy cimport ndarray
+
+import numpy
 from numpy import logaddexp, inf
-from numpy.math cimport logaddexp, INFINITY as inf
+
 cdef extern from "math.h":
     double exp(double x)
 
@@ -21,11 +21,11 @@ def forward_backward(ndarray[double, ndim=3] x_dot_parameters,
     cdef unsigned int n_transitions = transitions.shape[0]
 
     # Add extra 1 time step for start state
-    cdef ndarray[double, ndim=3] forward_table = np.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
-    cdef ndarray[double, ndim=4] forward_transition_table = np.full((n_time_steps + 1, n_states, n_states, n_classes), fill_value=-inf, dtype='float64')
+    cdef ndarray[double, ndim=3] forward_table = numpy.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
+    cdef ndarray[double, ndim=4] forward_transition_table = numpy.full((n_time_steps + 1, n_states, n_states, n_classes), fill_value=-inf, dtype='float64')
     forward_table[0, 0, :] = 0.0
 
-    cdef ndarray[double, ndim=3] backward_table = np.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
+    cdef ndarray[double, ndim=3] backward_table = numpy.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
     backward_table[-1, -1, :] = 0.0
 
     cdef unsigned int class_number, s0, s1
@@ -81,10 +81,10 @@ def log_likelihood(x,
                                         transitions)
     n_time_steps = forward_table.shape[0] - 1
     cdef unsigned int n_transitions = transitions.shape[0]
-    cdef ndarray[double, ndim=3] dstate_parameters = np.zeros_like(state_parameters, dtype='float64')
-    cdef ndarray[double, ndim=1] dtransition_parameters = np.zeros_like(transition_parameters, dtype='float64')
+    cdef ndarray[double, ndim=3] dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
+    cdef ndarray[double, ndim=1] dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
 
-    cdef ndarray[double, ndim=1] class_Z = np.empty((n_classes,))
+    cdef ndarray[double, ndim=1] class_Z = numpy.empty((n_classes,))
     cdef double Z = -inf
     cdef unsigned int c
     for c in range(n_classes):

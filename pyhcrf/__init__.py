@@ -8,7 +8,8 @@
 
 import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
-from pyhcrf.algorithms import forward_backward, log_likelihood
+
+from ._algorithms import forward_backward, log_likelihood
 
 
 class Hcrf(object):
@@ -87,7 +88,7 @@ class Hcrf(object):
             ll = 0.0
             gradient = numpy.zeros_like(parameter_vector)
             state_parameters, transition_parameters = self._unstack_parameters(parameter_vector)
-            for x, ty in zip(X, y)[batch_start_index: batch_end_index]:
+            for x, ty in list(zip(X, y))[batch_start_index:batch_end_index]:
                 y_index = classes.index(ty)
                 dll, dgradient_state, dgradient_transition = log_likelihood(x,
                                                                             y_index,
