@@ -26,7 +26,7 @@ from numpy.math cimport INFINITY as inf
 import numpy
 
 
-cdef extern from "math.h":
+cdef extern from "<math.h>":
     double exp(double x)
 
 cdef extern from "logaddexp.h":
