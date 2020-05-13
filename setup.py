@@ -37,12 +37,14 @@ class build_ext(_build_ext):
 
 
 setuptools.setup(
-    ext_modules=cythonize([
+    cmdclass=dict(sdist=sdist, build_ext=build_ext),
+    ext_modules=cythonize(
         setuptools.Extension(
             "pyhcrf._algorithms",
             ["pyhcrf/_algorithms.pyx"],
             include_dirs=[numpy.get_include()],
             extra_compile_args=["-Wall"],
         ),
-    ]),
+        annotate=True,
+    ),
 )

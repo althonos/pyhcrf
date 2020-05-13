@@ -1,0 +1,6 @@
+include COPYING
+include CHANGELOG.md
+include README.md
+
+recursive-include pyhcrf *.py *.pyi *.pyx *.pxd _version.txt py.typed
+recursive-exclude pyhcrf *.c *.html
