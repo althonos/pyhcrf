@@ -19,6 +19,7 @@
 # with pyhcrf.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from libc.stdint cimport int32_t, uint32_t, int64_t
 from numpy cimport ndarray
 from numpy.math cimport INFINITY as inf
 
@@ -36,13 +37,13 @@ def forward_backward(
     ndarray[double, ndim=3] x_dot_parameters,
     ndarray[double, ndim=3] state_parameters,
     ndarray[double, ndim=1] transition_parameters,
-    ndarray[long, ndim=2] transitions,
+    ndarray[int64_t, ndim=2] transitions,
 ):
-    cdef unsigned int n_time_steps = x_dot_parameters.shape[0]
-    cdef unsigned int n_states = state_parameters.shape[1]
-    cdef unsigned int n_classes = state_parameters.shape[2]
+    cdef uint32_t n_time_steps = x_dot_parameters.shape[0]
+    cdef uint32_t n_states = state_parameters.shape[1]
+    cdef uint32_t n_classes = state_parameters.shape[2]
 
-    cdef unsigned int n_transitions = transitions.shape[0]
+    cdef uint32_t n_transitions = transitions.shape[0]
 
     # Add extra 1 time step for start state
     cdef ndarray[double, ndim=3] forward_table = numpy.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
@@ -52,8 +53,8 @@ def forward_backward(
     cdef ndarray[double, ndim=3] backward_table = numpy.full((n_time_steps + 1, n_states, n_classes), fill_value=-inf, dtype='float64')
     backward_table[-1, -1, :] = 0.0
 
-    cdef unsigned int class_number, s0, s1
-    cdef int t
+    cdef uint32_t class_number, s0, s1
+    cdef int32_t t
     cdef double edge_potential
 
     for t in range(1, n_time_steps + 1):
@@ -84,15 +85,15 @@ def dummy():
 
 def log_likelihood(
     x,
-    long cy,
+    int64_t cy,
     ndarray[double, ndim=3] state_parameters,
     ndarray[double, ndim=1] transition_parameters,
-    ndarray[long, ndim=2] transitions,
+    ndarray[int64_t, ndim=2] transitions,
 ):
-    cdef unsigned int n_time_steps = x.shape[0]
-    cdef unsigned int n_features = x.shape[1]
-    cdef unsigned int n_states = state_parameters.shape[1]
-    cdef unsigned int n_classes = state_parameters.shape[2]
+    cdef uint32_t n_time_steps = x.shape[0]
+    cdef uint32_t n_features = x.shape[1]
+    cdef uint32_t n_states = state_parameters.shape[1]
+    cdef uint32_t n_classes = state_parameters.shape[2]
     cdef ndarray[double, ndim=3] x_dot_parameters = x.dot(state_parameters.reshape(n_features, -1)).reshape((n_time_steps, n_states, n_classes))
 
     cdef ndarray[double, ndim=3] forward_table
@@ -106,18 +107,18 @@ def log_likelihood(
                                         transition_parameters,
                                         transitions)
     n_time_steps = forward_table.shape[0] - 1
-    cdef unsigned int n_transitions = transitions.shape[0]
+    cdef uint32_t n_transitions = transitions.shape[0]
     cdef ndarray[double, ndim=3] dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
     cdef ndarray[double, ndim=1] dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
 
     cdef ndarray[double, ndim=1] class_Z = numpy.empty((n_classes,))
     cdef double Z = -inf
-    cdef unsigned int c
+    cdef uint32_t c
     for c in range(n_classes):
         class_Z[c] = forward_table[-1, -1, c]
         Z = logaddexp(Z, forward_table[-1, -1, c])
 
-    cdef unsigned int t, state, transition, s0, s1
+    cdef uint32_t t, state, transition, s0, s1
     cdef double alphabeta
     for t in range(1, n_time_steps + 1):
         for state in range(n_states):
