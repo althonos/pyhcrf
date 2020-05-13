@@ -27,13 +27,13 @@ import numpy
 
 
 cdef extern from "<math.h>":
-    double exp(double x)
+    double exp(double x) nogil
 
 cdef extern from "logaddexp.h":
-    double logaddexp(double x, double y)
+    double logaddexp(double x, double y) nogil
 
 
-def forward_backward(
+cpdef forward_backward(
     ndarray[double, ndim=3] x_dot_parameters,
     ndarray[double, ndim=3] state_parameters,
     ndarray[double, ndim=1] transition_parameters,
@@ -83,8 +83,8 @@ def forward_backward(
 def dummy():
     pass
 
-def log_likelihood(
-    x,
+cpdef log_likelihood(
+    ndarray[double, ndim=2] x,
     int64_t cy,
     ndarray[double, ndim=3] state_parameters,
     ndarray[double, ndim=1] transition_parameters,
