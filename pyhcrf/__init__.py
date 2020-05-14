@@ -5,6 +5,7 @@
 
 import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
+from scipy.optimize import minimize
 
 from ._algorithms import forward_backward, log_likelihood
 
@@ -69,8 +70,10 @@ class HCRF(object):
 
         Parameters
         ----------
-        X : List of list of ints. Each list of ints represent a training example.
-            Each int in that list must be the index of a one-hot encoded feature.
+        X : array-like, shape (n_samples, n_time_steps, n_features)
+            List of list of list of ints. Each list of ints represent a
+            training example, and is expected to be a one-hot encoded list
+            of features.
 
         y : array-like, shape (n_samples,)
             Target vector relative to X.
@@ -153,11 +156,19 @@ class HCRF(object):
                 total_nll += nll
                 initial_parameter_vector -= ngradient * self.sgd_stepsize
 
-        self._optimizer_result = fmin_l_bfgs_b(
-            objective_function, initial_parameter_vector, **self.optimizer_kwargs
+        self._optimizer_result = minimize(
+            objective_function,
+            initial_parameter_vector,
+            method="L-BFGS-B",
+            jac=True,
+            **self.optimizer_kwargs
         )
+
+        if not self._optimizer_result.success:
+            raise RuntimeError("optimize did not converge: {}".format(self._optimizer_result.message))
+
         self.state_parameters, self.transition_parameters = self._unstack_parameters(
-            self._optimizer_result[0]
+            self._optimizer_result.x
         )
         return self
 
