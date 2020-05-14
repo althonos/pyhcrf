@@ -24,7 +24,7 @@ class TestHCRF(unittest.TestCase):
         ]
         y = [0, 1, 0, 1]
         model = HCRF(3)
-        print(X[0].dtype)
+        #print(X[0].dtype)
         model.fit(X, y)
         actual = model.predict(X)
 
@@ -70,8 +70,8 @@ class TestHCRF(unittest.TestCase):
         state_parameters = np.array(
             [[[-1, 1], [1, -1]], [[0, -2], [2, 3]]], dtype="float64"
         )
-        print("X.L")
-        print(np.dot(x, state_parameters))
+        #print("X.L")
+        #print(np.dot(x, state_parameters))
         A = np.zeros((4, 2, 2), dtype="float64")
         # T  S  W
         # 5, 2, 2
@@ -113,8 +113,8 @@ class TestHCRF(unittest.TestCase):
             x_dot_parameters, state_parameters, transition_parameters, transitions
         )
         # print np.log(A)
-        print(forward_table)
-        print(backward_table)
+        #print(forward_table)
+        #print(backward_table)
         np.testing.assert_array_almost_equal(forward_table, expected_forward_table)
         self.assertAlmostEqual(
             forward_table[-1, -1, 0], backward_table[0, 0, 0], places=5
@@ -142,7 +142,7 @@ class TestHCRF(unittest.TestCase):
             )
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print(trans, "    ", expected_der, actual_der)  # , dsp0)
+            #print(trans, "    ", expected_der, actual_der)  # , dsp0)
             # print ll1, ll0, delta
             self.assertAlmostEqual(expected_der, actual_der, places=2)
 
@@ -177,7 +177,7 @@ class TestHCRF(unittest.TestCase):
             )
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print(trans, "    ", expected_der, actual_der)  # , dsp0)
+            #print(trans, "    ", expected_der, actual_der)  # , dsp0)
             # print ll1, ll0, delta
             self.assertAlmostEqual(expected_der, actual_der, places=2)
 
@@ -219,7 +219,7 @@ class TestHCRF(unittest.TestCase):
                     )
                     expected_der = (ll1 - ll0) / delta
                     actual_der = dsp0[k, s, w]
-                    print(k, s, w, "    ", expected_der, actual_der)  # , dsp0)
+                    #print(k, s, w, "    ", expected_der, actual_der)  # , dsp0)
                     self.assertAlmostEqual(expected_der, actual_der, places=2)
 
     def test_gradient_large_transition(self):
@@ -252,7 +252,7 @@ class TestHCRF(unittest.TestCase):
             )
             expected_der = (ll1 - ll0) / delta
             actual_der = dtp0[trans]
-            print(trans, "    ", expected_der, actual_der)  # , dsp0)
+            #print(trans, "    ", expected_der, actual_der)  # , dsp0)
             # print ll1, ll0, delta
             # all_ders.append(abs(expected_der - actual_der) < 10.0**-2)
             self.assertAlmostEqual(expected_der, actual_der, places=2)
