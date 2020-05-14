@@ -19,6 +19,10 @@ cdef extern from "logaddexp.h":
     double logaddexp(double x, double y) nogil
 
 
+cpdef ndarray sign(ndarray x):
+    return (0.0 < x[:]).astype(x.dtype) - (x[:] < 0.0)
+
+
 cpdef forward_backward(
     ndarray[float64_t, ndim=3] x_dot_parameters,
     ndarray[float64_t, ndim=3] state_parameters,
@@ -95,38 +99,42 @@ def log_likelihood(
     transitions,
     dstate_parameters=None,
     dtransition_parameters=None,
+    class_Z=None,
 ):
     if dstate_parameters is None:
-        dstate_parameters = numpy.zeros_like(state_parameters, dtype="float64")
+        dstate_parameters = numpy.empty_like(state_parameters, dtype="float64")
     if dtransition_parameters is None:
-        dtransition_parameters = numpy.zeros_like(transition_parameters, dtype="float64")
-    return _log_likelihood(
+        dtransition_parameters = numpy.empty_like(transition_parameters, dtype="float64")
+    if class_Z is None:
+        class_Z = numpy.empty(state_parameters.shape[2], dtype="float64")
+    dll = _log_likelihood(
         x,
         cy,
         state_parameters,
         transition_parameters,
         transitions,
         dstate_parameters,
-        dtransition_parameters
+        dtransition_parameters,
+        class_Z,
     )
+    return dll, dstate_parameters, dtransition_parameters
 
 
-cpdef _log_likelihood(
+cpdef float64_t _log_likelihood(
     ndarray[float64_t, ndim=2] x,
     size_t cy,
     ndarray[float64_t, ndim=3] state_parameters,
     ndarray[float64_t, ndim=1] transition_parameters,
     ndarray[int64_t, ndim=2] transitions,
-
-    ndarray[float64_t, ndim=3] dstate_parameters,
-    ndarray[float64_t, ndim=1] dtransition_parameters
+    float64_t[:,:,:] dstate_parameters,
+    float64_t[:] dtransition_parameters,
+    float64_t[:] class_Z,
 ):
     #
     cdef float64_t alphabeta, weight, Z
     cdef int64_t s0, s1
     cdef size_t c, feat, t, state, transition
     cdef size_t n_time_steps, n_features, n_states, n_classes, n_transitions
-    cdef ndarray[float64_t, ndim=1] class_Z
     cdef ndarray[float64_t, ndim=3] backward_table, forward_table, x_dot_parameters
     cdef ndarray[float64_t, ndim=4] forward_transition_table
 
@@ -136,9 +144,6 @@ cpdef _log_likelihood(
     n_states = state_parameters.shape[1]
     n_classes = state_parameters.shape[2]
     n_transitions = transitions.shape[0]
-
-    # Initialize temporary arrays
-    class_Z = numpy.empty((n_classes,))
 
     # Compute (x @ state_parameters) before the loop
     x_dot_parameters = (
@@ -155,13 +160,17 @@ cpdef _log_likelihood(
     )
 
     with nogil:
+        # reset parameter gradients buffers
+        dstate_parameters[:,:,:] = 0.0
+        dtransition_parameters[:] = 0.0
+
         # compute Z by rewinding the forward table for all classes
         Z = -inf
         for c in range(n_classes):
             class_Z[c] = forward_table[n_time_steps, n_states-1, c]
             Z = logaddexp(Z, class_Z[c])
 
-        # compute all state parameters
+        # compute all state parameter gradients
         for t in range(1, n_time_steps + 1):
             for state in range(n_states):
                 for c in range(n_classes):
@@ -170,7 +179,7 @@ cpdef _log_likelihood(
                     for feat in range(n_features):
                         dstate_parameters[feat, state, c] += weight * x[t - 1, feat]
 
-        # compute all transition parameters
+        # compute all transition parameter gradients
         for t in range(1, n_time_steps + 1):
             for transition in range(n_transitions):
                 c = transitions[transition, 0]
@@ -180,4 +189,4 @@ cpdef _log_likelihood(
                 weight = exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z)
                 dtransition_parameters[transition] += weight
 
-    return class_Z[cy] - Z, dstate_parameters, dtransition_parameters
+        return class_Z[cy] - Z

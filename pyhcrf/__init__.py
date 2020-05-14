@@ -4,12 +4,13 @@
 # Copyright (c) 2013-2016, Dirko Coetsee
 
 import itertools
+import multiprocessing.pool
 
 import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from scipy.optimize import minimize
 
-from ._algorithms import forward_backward, log_likelihood
+from ._algorithms import forward_backward, log_likelihood, sign
 
 
 class _ObjectiveFunction(object):
@@ -19,18 +20,18 @@ class _ObjectiveFunction(object):
         self.y = y
         self.hcrf = hcrf
         self.classes_map = {cls:i for i,cls in enumerate(hcrf.classes_)}
-        #
-        self._dstate_parameters = numpy.empty(hcrf.state_parameters.shape, dtype="float64")
-        self._dtransitions_parameters = numpy.empty(hcrf.transition_parameters.shape, dtype="float64")
 
+        # allocate buffers only once to allow reusing them in several calls
+        self._dstate_parameters = numpy.empty_like(hcrf.state_parameters, dtype="float64")
+        self._dtransitions_parameters = numpy.empty_like(hcrf.transition_parameters, dtype="float64")
+        self._class_Z = numpy.empty(hcrf.state_parameters.shape[2], dtype="float64")
 
     def __call__(self, parameter_vector, start=None, end=None):
         ll = 0.0
         gradient = numpy.zeros_like(parameter_vector)
         parameters = self.hcrf._unstack_parameters(parameter_vector)
+
         for x, ty in itertools.islice(zip(self.X, self.y), start, end):
-            self._dstate_parameters.fill(0)
-            self._dtransitions_parameters.fill(0)
             dll, dgradient_state, dgradient_transition = log_likelihood(
                 x,
                 self.classes_map[ty],
@@ -38,6 +39,7 @@ class _ObjectiveFunction(object):
                 self.hcrf.transitions,
                 self._dstate_parameters,
                 self._dtransitions_parameters,
+                self._class_Z
             )
             dgradient = self.hcrf._stack_parameters(
                 dgradient_state, dgradient_transition
@@ -49,11 +51,14 @@ class _ObjectiveFunction(object):
         parameters_without_bias = numpy.array(parameter_vector)
         parameters_without_bias[0] = 0
         # L1 regularization
-        ll -= self.hcrf.c1 * numpy.abs(parameters_without_bias).sum()
-        gradient -=  self.hcrf.c1 * numpy.sign(parameters_without_bias)
+        if self.hcrf.c1 > 0.0:
+            s = sign(parameters_without_bias)
+            ll -= self.hcrf.c1 * parameters_without_bias.dot(s)
+            gradient -=  self.hcrf.c1 * s
         # L2 regularization
-        ll -= self.hcrf.c2 * (parameters_without_bias**2).sum()
-        gradient -= 2.0 * self.hcrf.c2 * parameters_without_bias
+        if self.hcrf.c2 > 0.0:
+            ll -= self.hcrf.c2 * parameters_without_bias.dot(parameters_without_bias.T)
+            gradient -= 2.0 * self.hcrf.c2 * parameters_without_bias
         return -ll, -gradient
 
 
