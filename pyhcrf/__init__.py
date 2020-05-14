@@ -4,13 +4,12 @@
 # Copyright (c) 2013-2016, Dirko Coetsee
 
 import itertools
-import multiprocessing.pool
 
 import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from scipy.optimize import minimize
 
-from ._algorithms import forward_backward, log_likelihood, sign
+from ._algorithms import forward_backward, _log_likelihood, regularize_l1, regularize_l2
 
 
 class _ObjectiveFunction(object):
@@ -22,9 +21,15 @@ class _ObjectiveFunction(object):
         self.classes_map = {cls:i for i,cls in enumerate(hcrf.classes_)}
 
         # allocate buffers only once to allow reusing them in several calls
-        self._dstate_parameters = numpy.empty_like(hcrf.state_parameters, dtype="float64")
-        self._dtransitions_parameters = numpy.empty_like(hcrf.transition_parameters, dtype="float64")
         self._class_Z = numpy.empty(hcrf.state_parameters.shape[2], dtype="float64")
+        # parameters gradient buffer are allocated contiguously to avoid having
+        # to stack (which is costly) and unstack (not so much) parameters at
+        # each iteration of the loop in __call__: _dstate_parameters and
+        # _dtransitions_parameters are unstacked views of _dgradient
+        num_state_parameters = numpy.prod(hcrf.state_parameters.shape)
+        self._dgradient = numpy.empty(num_state_parameters + hcrf.transition_parameters.shape[0])
+        self._dstate_parameters = self._dgradient[:num_state_parameters].reshape(hcrf.state_parameters.shape)
+        self._dtransitions_parameters = self._dgradient[num_state_parameters:]
 
     def __call__(self, parameter_vector, start=None, end=None):
         ll = 0.0
@@ -32,7 +37,9 @@ class _ObjectiveFunction(object):
         parameters = self.hcrf._unstack_parameters(parameter_vector)
 
         for x, ty in itertools.islice(zip(self.X, self.y), start, end):
-            dll, dgradient_state, dgradient_transition = log_likelihood(
+            # this call updates _dgradient as well since _dstate_parameters and
+            # _dtransitions_parameters are memory views of _dgradient
+            dll = _log_likelihood(
                 x,
                 self.classes_map[ty],
                 *parameters,
@@ -41,24 +48,20 @@ class _ObjectiveFunction(object):
                 self._dtransitions_parameters,
                 self._class_Z
             )
-            dgradient = self.hcrf._stack_parameters(
-                dgradient_state, dgradient_transition
-            )
             ll += dll
-            gradient += dgradient
+            gradient += self._dgradient
 
         # exclude the bias parameters from being regularized
         parameters_without_bias = numpy.array(parameter_vector)
         parameters_without_bias[0] = 0
-        # L1 regularization
+
+        # L1/L2 regularization if required
         if self.hcrf.c1 > 0.0:
-            s = sign(parameters_without_bias)
-            ll -= self.hcrf.c1 * parameters_without_bias.dot(s)
-            gradient -=  self.hcrf.c1 * s
-        # L2 regularization
+            ll = regularize_l1(ll, gradient, self.hcrf.c1, parameters_without_bias)
         if self.hcrf.c2 > 0.0:
-            ll -= self.hcrf.c2 * parameters_without_bias.dot(parameters_without_bias.T)
-            gradient -= 2.0 * self.hcrf.c2 * parameters_without_bias
+            ll = regularize_l2(ll, gradient, self.hcrf.c2, parameters_without_bias)
+
+        # We want to maximize the log-likelihood, so we minizime the opposite
         return -ll, -gradient
 
 
@@ -139,7 +142,6 @@ class HCRF(object):
         """
         self.classes_ = sorted(set(y))
         num_classes = len(self.classes_)
-        classes_map = {cls:i for i,cls in enumerate(self.classes_)}
         if self.transitions is None:
             self.transitions = self._create_default_transitions(
                 num_classes, self.num_states

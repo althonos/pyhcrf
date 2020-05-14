@@ -6,6 +6,7 @@
 
 from libc.stdint cimport int32_t, uint32_t, int64_t
 from libc.stddef cimport size_t
+from libc.string cimport memset
 from numpy cimport ndarray, float64_t
 from numpy.math cimport INFINITY as inf
 
@@ -21,6 +22,31 @@ cdef extern from "logaddexp.h":
 
 cpdef ndarray sign(ndarray x):
     return (0.0 < x[:]).astype(x.dtype) - (x[:] < 0.0)
+
+
+cpdef float64_t regularize_l1(
+    float64_t ll,
+    ndarray[float64_t, ndim=1] gradient,
+    float64_t c1,
+    ndarray[float64_t, ndim=1] parameters,
+):
+    ll -= c1 * numpy.abs(parameters).sum()
+    gradient -= c1 * sign(parameters)
+    return ll
+
+
+cpdef float64_t regularize_l2(
+    float64_t ll,
+    ndarray[float64_t, ndim=1] gradient,
+    float64_t c2,
+    ndarray[float64_t, ndim=1] parameters,
+):
+    ll -= c2 * parameters.dot(parameters.T)
+    gradient -= 2.0 * c2 * parameters
+    return ll
+
+
+# ----------------------------------------------------------------------------
 
 
 cpdef forward_backward(
