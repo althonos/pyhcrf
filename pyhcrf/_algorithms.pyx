@@ -115,7 +115,6 @@ cpdef log_likelihood(
     cdef uint32_t n_transitions
     cdef ndarray[float64_t, ndim=3] dstate_parameters
     cdef ndarray[float64_t, ndim=1] dtransition_parameters, class_Z
-
     n_transitions = transitions.shape[0]
     dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
     dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
@@ -128,19 +127,16 @@ cpdef log_likelihood(
             class_Z[c] = forward_table[-1, -1, c]
             Z = logaddexp(Z, forward_table[-1, -1, c])
 
-
-    cdef uint32_t t, state, transition
-    cdef float64_t alphabeta
-    for t in range(1, n_time_steps + 1):
-        for state in range(n_states):
-            for c in range(n_classes):
-                alphabeta = forward_table[t, state, c] + backward_table[t, state, c]
-                if c == cy:
-                    dstate_parameters[:, state, c] += (
-                        (exp(alphabeta - class_Z[c]) - exp(alphabeta - Z)) * x[t - 1, :]
-                    )
-                else:
-                    dstate_parameters[:, state, c] -= exp(alphabeta - Z) * x[t - 1, :]
+    cdef uint32_t feat, t, state, transition
+    cdef float64_t alphabeta, weight
+    with nogil:
+        for t in range(1, n_time_steps + 1):
+            for state in range(n_states):
+                for c in range(n_classes):
+                    alphabeta = forward_table[t, state, c] + backward_table[t, state, c]
+                    weight = exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z)
+                    for feat in range(n_features):
+                        dstate_parameters[feat, state, c] += weight * x[t - 1, feat]
 
     cdef uint32_t s0, s1
     with nogil:
@@ -150,9 +146,6 @@ cpdef log_likelihood(
                 s0 = transitions[transition, 1]
                 s1 = transitions[transition, 2]
                 alphabeta = forward_transition_table[t, s0, s1, c] + backward_table[t, s1, c]
-                if c == cy:
-                    dtransition_parameters[transition] += (exp(alphabeta - class_Z[c]) - exp(alphabeta - Z))
-                else:
-                    dtransition_parameters[transition] -= exp(alphabeta - Z)
+                dtransition_parameters[transition] += (exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z))
 
     return class_Z[cy] - Z, dstate_parameters, dtransition_parameters
