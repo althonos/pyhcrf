@@ -3,11 +3,58 @@
 # Copyright (c) 2020, Martin Larralde
 # Copyright (c) 2013-2016, Dirko Coetsee
 
+import itertools
+
 import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from scipy.optimize import minimize
 
 from ._algorithms import forward_backward, log_likelihood
+
+
+class _ObjectiveFunction(object):
+
+    def __init__(self, hcrf, X, y):
+        self.X = X
+        self.y = y
+        self.hcrf = hcrf
+        self.classes_map = {cls:i for i,cls in enumerate(hcrf.classes_)}
+        #
+        self._dstate_parameters = numpy.empty(hcrf.state_parameters.shape, dtype="float64")
+        self._dtransitions_parameters = numpy.empty(hcrf.transition_parameters.shape, dtype="float64")
+
+
+    def __call__(self, parameter_vector, start=None, end=None):
+        ll = 0.0
+        gradient = numpy.zeros_like(parameter_vector)
+        parameters = self.hcrf._unstack_parameters(parameter_vector)
+        for x, ty in itertools.islice(zip(self.X, self.y), start, end):
+            self._dstate_parameters.fill(0)
+            self._dtransitions_parameters.fill(0)
+            dll, dgradient_state, dgradient_transition = log_likelihood(
+                x,
+                self.classes_map[ty],
+                *parameters,
+                self.hcrf.transitions,
+                self._dstate_parameters,
+                self._dtransitions_parameters,
+            )
+            dgradient = self.hcrf._stack_parameters(
+                dgradient_state, dgradient_transition
+            )
+            ll += dll
+            gradient += dgradient
+
+        # exclude the bias parameters from being regularized
+        parameters_without_bias = numpy.array(parameter_vector)
+        parameters_without_bias[0] = 0
+        # L1 regularization
+        ll -= self.hcrf.c1 * numpy.abs(parameters_without_bias).sum()
+        gradient -=  self.hcrf.c1 * numpy.abs(parameters_without_bias)
+        # L2 regularization
+        ll -= self.hcrf.c2 * (parameters_without_bias**2).sum()
+        gradient -= 2.0 * self.hcrf.c2 * parameters_without_bias
+        return -ll, -gradient
 
 
 class HCRF(object):
@@ -29,7 +76,8 @@ class HCRF(object):
     def __init__(
         self,
         num_states=2,
-        l2_regularization=1.0,
+        c1=0.15,
+        c2=0.15,
         transitions=None,
         state_parameter_noise=0.001,
         transition_parameter_noise=0.001,
@@ -53,9 +101,10 @@ class HCRF(object):
         self.classes_ = None
         self.attributes_ = None
         self.algorithm = "lbsgf"
+        self.c1 = c1
+        self.c2 = c2
 
         # Other parameters
-        self.l2_regularization = l2_regularization
         self.num_states = num_states
         self.state_parameters = None
         self.transition_parameters = None
@@ -83,7 +132,7 @@ class HCRF(object):
         self : object
             Returns self.
         """
-        self.classes_ = list(set(y))
+        self.classes_ = sorted(set(y))
         num_classes = len(self.classes_)
         classes_map = {cls:i for i,cls in enumerate(self.classes_)}
         if self.transitions is None:
@@ -111,42 +160,7 @@ class HCRF(object):
         initial_parameter_vector = self._stack_parameters(
             self.state_parameters, self.transition_parameters
         )
-        function_evaluations = [0]
-
-        def objective_function(parameter_vector):
-            ll = 0.0
-            gradient = numpy.zeros_like(parameter_vector)
-            state_parameters, transition_parameters = self._unstack_parameters(
-                parameter_vector
-            )
-            for x, ty in zip(X, y):
-                y_index = classes_map[ty]
-                dll, dgradient_state, dgradient_transition = log_likelihood(
-                    x,
-                    y_index,
-                    state_parameters,
-                    transition_parameters,
-                    self.transitions,
-                )
-                dgradient = self._stack_parameters(
-                    dgradient_state, dgradient_transition
-                )
-                ll += dll
-                gradient += dgradient
-
-            # exclude the bias parameters from being regularized
-            parameters_without_bias = numpy.array(parameter_vector)
-            parameters_without_bias[0] = 0
-            ll -= self.l2_regularization * numpy.dot(
-                parameters_without_bias.T, parameters_without_bias
-            )
-            gradient = (
-                gradient.flatten()
-                - 2.0 * self.l2_regularization * parameters_without_bias
-            )
-
-            function_evaluations[0] += 1
-            return -ll, -gradient
+        objective_function = _ObjectiveFunction(self, X, y)
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
         if self.sgd_stepsize is not None:
@@ -186,10 +200,8 @@ class HCRF(object):
         y : iterable of shape = [n_samples]
             The predicted classes.
         """
-        return [
-            self.classes_[prediction.argmax()]
-            for prediction in self.predict_marginals(X)
-        ]
+        preds = self.predict_marginals(X)
+        return [max(pred, key=pred.__getitem__) for pred in preds]
 
     def predict_marginals(self, X):
         """Probability estimates.
@@ -221,10 +233,8 @@ class HCRF(object):
                 self.transitions,
             )
             # TODO: normalize by subtracting log-sum to avoid overflow
-            y.append(
-                numpy.exp(forward_table[-1, -1, :])
-                / sum(numpy.exp(forward_table[-1, -1, :]))
-            )
+            preds = numpy.exp(forward_table[-1, -1, :])
+            y.append(dict(zip(self.classes_, preds / preds.sum())))
         return numpy.array(y)
 
     @staticmethod
