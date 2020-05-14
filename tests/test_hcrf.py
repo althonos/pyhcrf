@@ -46,7 +46,7 @@ class TestHCRF(unittest.TestCase):
             ).toarray(),
         ]
         y = [0, 1, 0, 1]
-        model = HCRF(5, 1.0)
+        model = HCRF(5, c1=0, c2=1)
         model.fit(X, y)
         actual = model.predict(X)
 
