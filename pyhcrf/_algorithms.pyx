@@ -9,8 +9,8 @@ from libc.stddef cimport size_t
 from numpy cimport ndarray, float64_t
 from numpy.math cimport INFINITY as inf
 
+cimport numpy
 import numpy
-
 
 cdef extern from "<math.h>":
     double exp(double x) nogil
@@ -87,20 +87,46 @@ cpdef forward_backward(
     return forward_table, forward_transition_table, backward_table
 
 
-cpdef log_likelihood(
+def log_likelihood(
+    x,
+    cy,
+    state_parameters,
+    transition_parameters,
+    transitions,
+    dstate_parameters=None,
+    dtransition_parameters=None,
+):
+    if dstate_parameters is None:
+        dstate_parameters = numpy.zeros_like(state_parameters, dtype="float64")
+    if dtransition_parameters is None:
+        dtransition_parameters = numpy.zeros_like(transition_parameters, dtype="float64")
+    return _log_likelihood(
+        x,
+        cy,
+        state_parameters,
+        transition_parameters,
+        transitions,
+        dstate_parameters,
+        dtransition_parameters
+    )
+
+
+cpdef _log_likelihood(
     ndarray[float64_t, ndim=2] x,
     size_t cy,
     ndarray[float64_t, ndim=3] state_parameters,
     ndarray[float64_t, ndim=1] transition_parameters,
     ndarray[int64_t, ndim=2] transitions,
+
+    ndarray[float64_t, ndim=3] dstate_parameters,
+    ndarray[float64_t, ndim=1] dtransition_parameters
 ):
     #
     cdef float64_t alphabeta, weight, Z
     cdef int64_t s0, s1
     cdef size_t c, feat, t, state, transition
     cdef size_t n_time_steps, n_features, n_states, n_classes, n_transitions
-    cdef ndarray[float64_t, ndim=1] dtransition_parameters, class_Z
-    cdef ndarray[float64_t, ndim=3] dstate_parameters
+    cdef ndarray[float64_t, ndim=1] class_Z
     cdef ndarray[float64_t, ndim=3] backward_table, forward_table, x_dot_parameters
     cdef ndarray[float64_t, ndim=4] forward_transition_table
 
@@ -112,8 +138,6 @@ cpdef log_likelihood(
     n_transitions = transitions.shape[0]
 
     # Initialize temporary arrays
-    dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
-    dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
     class_Z = numpy.empty((n_classes,))
 
     # Compute (x @ state_parameters) before the loop
