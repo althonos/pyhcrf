@@ -7,6 +7,7 @@
 from libc.stdint cimport int32_t, uint32_t, int64_t
 from libc.stddef cimport size_t
 from libc.string cimport memset
+from libc.stdio cimport printf
 from numpy cimport ndarray, float64_t
 from numpy.math cimport INFINITY as inf
 
@@ -131,8 +132,6 @@ def log_likelihood(
         dstate_parameters = numpy.empty_like(state_parameters, dtype="float64")
     if dtransition_parameters is None:
         dtransition_parameters = numpy.empty_like(transition_parameters, dtype="float64")
-    if class_Z is None:
-        class_Z = numpy.empty(state_parameters.shape[2], dtype="float64")
     dll = _log_likelihood(
         x,
         cy,
@@ -141,7 +140,6 @@ def log_likelihood(
         transitions,
         dstate_parameters,
         dtransition_parameters,
-        class_Z,
     )
     return dll, dstate_parameters, dtransition_parameters
 
@@ -154,7 +152,6 @@ cpdef float64_t _log_likelihood(
     ndarray[int64_t, ndim=2] transitions,
     float64_t[:,:,:] dstate_parameters,
     float64_t[:] dtransition_parameters,
-    float64_t[:] class_Z,
 ):
     #
     cdef float64_t alphabeta, weight, Z
@@ -193,15 +190,15 @@ cpdef float64_t _log_likelihood(
         # compute Z by rewinding the forward table for all classes
         Z = -inf
         for c in range(n_classes):
-            class_Z[c] = forward_table[n_time_steps, n_states-1, c]
-            Z = logaddexp(Z, class_Z[c])
+            # class_Z[c] = forward_table[n_time_steps, n_states-1, c]
+            Z = logaddexp(Z, forward_table[n_time_steps, n_states-1, c])
 
         # compute all state parameter gradients
         for t in range(1, n_time_steps + 1):
             for state in range(n_states):
                 for c in range(n_classes):
                     alphabeta = forward_table[t, state, c] + backward_table[t, state, c]
-                    weight = exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z)
+                    weight = exp(alphabeta - forward_table[n_time_steps, n_states-1, c]) * (c == cy) - exp(alphabeta - Z)
                     for feat in range(n_features):
                         dstate_parameters[feat, state, c] += weight * x[t - 1, feat]
 
@@ -212,7 +209,7 @@ cpdef float64_t _log_likelihood(
                 s0 = transitions[transition, 1]
                 s1 = transitions[transition, 2]
                 alphabeta = forward_transition_table[t, s0, s1, c] + backward_table[t, s1, c]
-                weight = exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z)
+                weight = exp(alphabeta - forward_table[n_time_steps, n_states-1, c]) * (c == cy) - exp(alphabeta - Z)
                 dtransition_parameters[transition] += weight
 
-        return class_Z[cy] - Z
+        return forward_table[n_time_steps, n_states-1, cy] - Z

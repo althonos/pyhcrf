@@ -20,8 +20,7 @@ class _ObjectiveFunction(object):
         self.hcrf = hcrf
         self.classes_map = {cls:i for i,cls in enumerate(hcrf.classes_)}
 
-        # allocate buffers only once to allow reusing them in several calls
-        self._class_Z = numpy.empty(hcrf.state_parameters.shape[2], dtype="float64")
+        # allocate buffers only once to allow reusing them in several calls;
         # parameters gradient buffer are allocated contiguously to avoid having
         # to stack (which is costly) and unstack (not so much) parameters at
         # each iteration of the loop in __call__: _dstate_parameters and
@@ -46,7 +45,6 @@ class _ObjectiveFunction(object):
                 self.hcrf.transitions,
                 self._dstate_parameters,
                 self._dtransitions_parameters,
-                self._class_Z
             )
             ll += dll
             gradient += self._dgradient
