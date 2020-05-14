@@ -1,5 +1,5 @@
 # coding: utf-8
-# cython: language_level=3, linetrace=True, boundscheck=False, wraparound=True
+# cython: language_level=3, linetrace=True, boundscheck=False, wraparound=False
 
 # Copyright (c) 2020, Martin Larralde
 # Copyright (c) 2013-2016, Dirko Coetsee
@@ -57,6 +57,7 @@ cpdef forward_backward(
     backward_table[n_time_steps, n_states-1, :] = 0.0
 
     with nogil:
+        # Compute forward transitions
         for t in range(1, n_time_steps + 1):
             for transition in range(n_transitions):
                 class_number = transitions[transition, 0]
@@ -71,6 +72,7 @@ cpdef forward_backward(
                     forward_transition_table[t, s0, s1, class_number],
                     edge_potential + x_dot_parameters[t - 1, s1, class_number]
                 )
+        # Compute backwards transitions
         for t in range(n_time_steps - 1, -1, -1):
             for transition in range(n_transitions):
                 class_number = transitions[transition, 0]
@@ -132,8 +134,8 @@ cpdef log_likelihood(
         # compute Z by rewinding the forward table for all classes
         Z = -inf
         for c in range(n_classes):
-            class_Z[c] = forward_table[-1, -1, c]
-            Z = logaddexp(Z, forward_table[-1, -1, c])
+            class_Z[c] = forward_table[n_time_steps, n_states-1, c]
+            Z = logaddexp(Z, class_Z[c])
 
         # compute all state parameters
         for t in range(1, n_time_steps + 1):
