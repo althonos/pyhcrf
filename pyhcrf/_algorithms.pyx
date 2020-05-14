@@ -87,24 +87,40 @@ cpdef forward_backward(
 
 cpdef log_likelihood(
     ndarray[float64_t, ndim=2] x,
-    int64_t cy,
+    size_t cy,
     ndarray[float64_t, ndim=3] state_parameters,
     ndarray[float64_t, ndim=1] transition_parameters,
     ndarray[int64_t, ndim=2] transitions,
 ):
-
-    cdef uint32_t n_time_steps, n_features, n_states, n_classes
+    #
+    cdef float64_t alphabeta, weight, Z
+    cdef int64_t s0, s1
+    cdef size_t c, feat, t, state, transition
+    cdef size_t n_time_steps, n_features, n_states, n_classes, n_transitions
+    cdef ndarray[float64_t, ndim=1] dtransition_parameters, class_Z
+    cdef ndarray[float64_t, ndim=3] dstate_parameters
     cdef ndarray[float64_t, ndim=3] backward_table, forward_table, x_dot_parameters
     cdef ndarray[float64_t, ndim=4] forward_transition_table
 
+    # Extract dimensions of input arrays
     n_time_steps = x.shape[0]
     n_features = x.shape[1]
     n_states = state_parameters.shape[1]
     n_classes = state_parameters.shape[2]
+    n_transitions = transitions.shape[0]
+
+    # Initialize temporary arrays
+    dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
+    dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
+    class_Z = numpy.empty((n_classes,))
+
+    # Compute (x @ state_parameters) before the loop
     x_dot_parameters = (
         x.dot(state_parameters.reshape(n_features, -1))
           .reshape((n_time_steps, n_states, n_classes))
     )
+
+    # Compute the state and transition tables from the given parameters
     forward_table, forward_transition_table, backward_table = forward_backward(
         x_dot_parameters,
         state_parameters,
@@ -112,24 +128,14 @@ cpdef log_likelihood(
         transitions
     )
 
-    cdef uint32_t n_transitions
-    cdef ndarray[float64_t, ndim=3] dstate_parameters
-    cdef ndarray[float64_t, ndim=1] dtransition_parameters, class_Z
-    n_transitions = transitions.shape[0]
-    dstate_parameters = numpy.zeros_like(state_parameters, dtype='float64')
-    dtransition_parameters = numpy.zeros_like(transition_parameters, dtype='float64')
-
-    class_Z = numpy.empty((n_classes,))
-    cdef float64_t Z = -inf
-    cdef uint32_t c
     with nogil:
+        # compute Z by rewinding the forward table for all classes
+        Z = -inf
         for c in range(n_classes):
             class_Z[c] = forward_table[-1, -1, c]
             Z = logaddexp(Z, forward_table[-1, -1, c])
 
-    cdef uint32_t feat, t, state, transition
-    cdef float64_t alphabeta, weight
-    with nogil:
+        # compute all state parameters
         for t in range(1, n_time_steps + 1):
             for state in range(n_states):
                 for c in range(n_classes):
@@ -138,14 +144,14 @@ cpdef log_likelihood(
                     for feat in range(n_features):
                         dstate_parameters[feat, state, c] += weight * x[t - 1, feat]
 
-    cdef uint32_t s0, s1
-    with nogil:
+        # compute all transition parameters
         for t in range(1, n_time_steps + 1):
             for transition in range(n_transitions):
                 c = transitions[transition, 0]
                 s0 = transitions[transition, 1]
                 s1 = transitions[transition, 2]
                 alphabeta = forward_transition_table[t, s0, s1, c] + backward_table[t, s1, c]
-                dtransition_parameters[transition] += (exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z))
+                weight = exp(alphabeta - class_Z[c]) * (c == cy) - exp(alphabeta - Z)
+                dtransition_parameters[transition] += weight
 
     return class_Z[cy] - Z, dstate_parameters, dtransition_parameters
