@@ -50,7 +50,7 @@ class _ObjectiveFunction(object):
         parameters_without_bias[0] = 0
         # L1 regularization
         ll -= self.hcrf.c1 * numpy.abs(parameters_without_bias).sum()
-        gradient -=  self.hcrf.c1 * numpy.abs(parameters_without_bias)
+        gradient -=  self.hcrf.c1 * numpy.sign(parameters_without_bias)
         # L2 regularization
         ll -= self.hcrf.c2 * (parameters_without_bias**2).sum()
         gradient -= 2.0 * self.hcrf.c2 * parameters_without_bias
