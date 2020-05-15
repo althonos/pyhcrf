@@ -10,6 +10,8 @@ from scipy.sparse import csr_matrix
 from pyhcrf import HCRF
 from pyhcrf._algorithms import forward_backward, log_likelihood
 
+from .utils import numpy_error_context
+
 TEST_PRECISION = 3
 
 
@@ -99,7 +101,8 @@ class TestHCRF(unittest.TestCase):
             0 + 7 + 1 - 1
         ) * np.exp(1 + 6)
 
-        expected_forward_table = np.log(A)
+        with numpy_error_context(divide="ignore"):
+            expected_forward_table = np.log(A)
 
         n_features = 2
         n_time_steps = 3
