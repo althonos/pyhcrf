@@ -30,6 +30,10 @@ class _ObjectiveFunction(object):
         self._regularize_l1 = hcrf._regularize_l1
         self._regularize_l2 = regularize_l2
 
+        # store dimensions of the state parameters for faster unstacking
+        self._state_parameters_shape = hcrf.state_parameters.shape
+        self._state_parameters_count = numpy.prod(hcrf.state_parameters.shape)
+
         # allocate buffers only once to allow reusing them in several calls;
         # parameters gradient buffer are allocated contiguously to avoid having
         # to stack (which is costly) and unstack (not so much) parameters at
@@ -43,7 +47,7 @@ class _ObjectiveFunction(object):
     def __call__(self, parameter_vector, start=None, end=None):
         ll = 0.0
         gradient = numpy.zeros_like(parameter_vector)
-        parameters = self.hcrf._unstack_parameters(parameter_vector)
+        parameters = self._unstack_parameters(parameter_vector)
 
         for x, ty in itertools.islice(zip(self.X, self.y), start, end):
             # this call updates _dgradient as well since _dstate_parameters and
@@ -71,6 +75,12 @@ class _ObjectiveFunction(object):
 
         # We want to maximize the log-likelihood, so we minizime the opposite
         return -ll, -gradient
+
+    def _unstack_parameters(self, parameter_vector):
+        return (
+            parameter_vector[:self._state_parameters_count].reshape(self._state_parameters_shape),
+            parameter_vector[self._state_parameters_count:],
+        )
 
 
 class HCRF(object):
@@ -197,51 +207,47 @@ class HCRF(object):
                 num_classes, self.num_states
             )
 
-        # Initialise the parameters
+        # Allocate buffers for the parameters, using views to avoid
+        # stacking / unstacking
         _, num_features = X[0].shape
         num_transitions, _ = self.transitions.shape
-        # state_parameters_shape = (num_features, self.num_states, num_classes)
-        # state_parameters_count = numpy.prod(state_parameter_shape)
-        if self.state_parameters is None:
-            self.state_parameters = (
-                numpy.random.standard_normal(
-                    (num_features, self.num_states, num_classes)
-                )
-                * self.state_parameter_noise
-            )
-        if self.transition_parameters is None:
-            self.transition_parameters = (
-                numpy.random.standard_normal((num_transitions))
-                * self.transition_parameter_noise
-            )
+        state_parameters_shape = (num_features, self.num_states, num_classes)
+        state_parameters_count = numpy.prod(state_parameters_shape)
+        self.parameters = numpy.empty( state_parameters_count + num_transitions )
+        self.state_parameters = self.parameters[:state_parameters_count].reshape(state_parameters_shape)
+        self.transition_parameters = self.parameters[state_parameters_count:]
 
-        initial_parameter_vector = self._stack_parameters(
-            self.state_parameters, self.transition_parameters
-        )
+        # Initialize parameters with random values
+        s = numpy.random.standard_normal(self.state_parameters.shape)
+        numpy.copyto(self.state_parameters, s * self.state_parameter_noise)
+        t = numpy.random.standard_normal(self.transition_parameters.shape)
+        numpy.copyto(self.transition_parameters, t * self.transition_parameter_noise)
+
+        # Initialize the objective function using the training parameters
         objective_function = _ObjectiveFunction(self, X, y)
 
         # If the stochastic gradient stepsize is defined, do 1 epoch of SGD to initialize the parameters.
         if self.sgd_stepsize is not None:
             total_nll = 0.0
             for i in range(len(y)):
-                nll, ngradient = objective_function(initial_parameter_vector, i, i + 1)
+                nll, ngradient = objective_function(self.parameters, i, i + 1)
                 total_nll += nll
                 initial_parameter_vector -= ngradient * self.sgd_stepsize
 
+        # Run the optimizer to maximize the log-likelihood
         self._optimizer_result = minimize(
             objective_function,
-            initial_parameter_vector,
+            self.parameters,
             method="L-BFGS-B",
             jac=True,
             **self.optimizer_kwargs
         )
 
+        # Check the optimizer converged and update the optimal parameters
         if not self._optimizer_result.success:
             raise RuntimeError("optimize did not converge: {}".format(self._optimizer_result.message))
+        numpy.copyto(self.parameters, self._optimizer_result.x)
 
-        self.state_parameters, self.transition_parameters = self._unstack_parameters(
-            self._optimizer_result.x
-        )
         return self
 
     def predict(self, X):
@@ -318,15 +324,3 @@ class HCRF(object):
                     )  # To the end state
         transitions = numpy.array(transitions, dtype="int64")
         return transitions
-
-    @staticmethod
-    def _stack_parameters(state_parameters, transition_parameters):
-        return numpy.concatenate((state_parameters.flatten(), transition_parameters))
-
-    def _unstack_parameters(self, parameter_vector):
-        state_parameter_shape = self.state_parameters.shape
-        num_state_parameters = numpy.prod(state_parameter_shape)
-        return (
-            parameter_vector[:num_state_parameters].reshape(state_parameter_shape),
-            parameter_vector[num_state_parameters:],
-        )
