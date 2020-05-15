@@ -16,6 +16,10 @@ TEST_PRECISION = 3
 
 
 class TestHCRF(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(0)
+
     def test_train_regression(self):
         # Lets add a test just to get everything working so we can refactor.
         X = [
@@ -30,8 +34,8 @@ class TestHCRF(unittest.TestCase):
         model.fit(X, y)
         actual = model.predict(X)
 
-        expected = [0, 1, 0, 1]
-        self.assertEqual(actual, expected)
+        expected = np.array([0, 1, 0, 1])
+        np.testing.assert_array_equal(actual, expected)
 
     def test_train_regression_sparse(self):
         # Lets add a test just to get everything working so we can refactor.
@@ -53,7 +57,7 @@ class TestHCRF(unittest.TestCase):
         actual = model.predict(X)
 
         expected = [1, 1, 0, 1]
-        self.assertEqual(actual, expected)
+        np.testing.assert_array_equal(actual, expected)
 
     def test_forward_backward(self):
         transitions = np.array(
