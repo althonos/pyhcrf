@@ -30,19 +30,19 @@ cpdef float64_t regularize_l1(
     ndarray[float64_t, ndim=1] gradient,
     float64_t c1,
     ndarray[float64_t, ndim=1] parameters,
-    bint clipping=True,
+    object strategy="clipping",
 ):
     # clipping = True to enable SDG-L1-Clipping as described in
     # this paper: https://dl.acm.org/doi/pdf/10.5555/1687878.1687946
 
     cdef ndarray[uint8_t, ndim=1] clip
     ll -= c1 * numpy.abs(parameters).sum()
-    if clipping:
+    if strategy == "naive":
+        gradient -= c1 * sign(parameters)
+    else:
         clip = (gradient < c1) & (gradient > -c1)
         gradient -= c1 * sign(parameters)
         gradient *= ~clip
-    else:
-        gradient -= c1 * sign(parameters)
     return ll
 
 

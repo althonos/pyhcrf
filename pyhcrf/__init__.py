@@ -55,7 +55,7 @@ class _ObjectiveFunction(object):
 
         # L1/L2 regularization if required
         if self.hcrf.c1 > 0.0:
-            ll = regularize_l1(ll, gradient, self.hcrf.c1, parameters_without_bias)
+            ll = regularize_l1(ll, gradient, self.hcrf.c1, parameters_without_bias, self.hcrf.l1_strategy)
         if self.hcrf.c2 > 0.0:
             ll = regularize_l2(ll, gradient, self.hcrf.c2, parameters_without_bias)
 
@@ -73,9 +73,6 @@ class HCRF(object):
         classes_ (list of str, optional): The list of classes known by the
             model. It contains all class labels given when the model was fit,
             or `None` is the model has not been fitted yet.
-        attributes_ (list of str, optional): The list of features known by the
-            model. It contains all features given when the model was fit,
-            or `None` if the model has not been fitted yet.
 
     """
 
@@ -89,12 +86,48 @@ class HCRF(object):
         transition_parameter_noise=0.001,
         optimizer_kwargs=None,
         sgd_stepsize=None,
-        random_seed=0,
+        l1_strategy="clipping",
     ):
         """Instantiate a HCRF with hidden units of cardinality ``num_states``.
+
+        Arguments:
+            num_states (int): The number of hidden states to consider.
+            c1 (float): The value of the weight parameter to use for L1
+                regularization (LASSO).
+            c2 (float): The value of the weight parameter to use for L2
+                regularization (Ridge Regression).
+            transitions (2D array, optional): An array of transitions to use.
+                Each row of the array should be of the form :math:`(c, s0, s1)`
+                where :math:`c` is a class index, :math:`s0` and :math:`s1`
+                the indices of two states.
+            state_parameter_noise (float): The noise to apply to initial state
+                parameters when training the model.
+            transition_parameter_noise (float): The noise to apply to initial
+                transition parameters when training the model.
+            optimizer_kwargs (dict, optional): A dictionary with additional
+                parameters to pass to the optimizer. See the documentation of
+                :py:`scipy.optimize.minimize`.
+            sgd_stepsize (float, optional): The SGD step size to use when
+                building the initial parameters vector before minimization.
+            l1_strategy (str): The L1 regularization strategy to use to
+                approximate the L1 norm gradient. Should be one of ``naive``,
+                ``clipping`` (default), or ``penalty``. See [Tsuruoka 09].
+
+        References:
+            .. [Tsuruoka 09]: `Yoshimasa Tsuruoka, Jun’ichi Tsujii, and Sophia
+               Ananiadou, ‘Stochastic Gradient Descent Training for L1-Regularized
+               Log-Linear Models with Cumulative Penalty’, in Proceedings of the
+               Joint Conference of the 47th Annual Meeting of the ACL and the
+               4th International Joint Conference on Natural Language Processing
+               of the AFNLP (ACL-IJCNLP 2009, Suntec, Singapore: Association
+               for Computational Linguistics, 2009), 477–485,
+               <https://www.aclweb.org/anthology/P09-1054>`_.
+
         """
         if num_states <= 0:
             raise ValueError("num_states must be strictly positive, not {}".format(num_states))
+        if l1_strategy not in {"naive", "clipping", "penalty"}:
+            raise ValueError("unknown value for l1_strategy: {}".format(l1_strategy))
 
         # Make sure to store transitions in a numpy array of `int64`,
         # otherwise could cause error when calling `_algorithms` functions.
@@ -111,32 +144,29 @@ class HCRF(object):
         self.c2 = c2
 
         # Other parameters
+        self.l1_strategy = l1_strategy
         self.num_states = num_states
+        self.parameters = None
         self.state_parameters = None
         self.transition_parameters = None
         self.state_parameter_noise = state_parameter_noise
         self.transition_parameter_noise = transition_parameter_noise
         self.optimizer_kwargs = optimizer_kwargs if optimizer_kwargs else {}
         self.sgd_stepsize = sgd_stepsize
-        self._random_seed = random_seed
 
     def fit(self, X, y):
         """Fit the model according to the given training data.
 
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_time_steps, n_features)
-            List of list of list of ints. Each list of ints represent a
-            training example, and is expected to be a one-hot encoded list
-            of features.
+        Arguments:
+            X (array, shape :math:`(n_samples, n_stimesteps, n_features)`):
+                List of list of list of ints. Each list of ints represent an
+                observation, and is expected to be a one-hot encoded list of
+                features. :math:`n_timesteps` can vary between different
+                samples.
+            y (array, shape :math:`(n_samples)`):
+                Target vector relative to X containing labels for each samples.
+                Labels can be any hashable Python object.
 
-        y : array-like, shape (n_samples,)
-            Target vector relative to X.
-
-        Returns
-        -------
-        self : object
-            Returns self.
         """
         self.classes_ = sorted(set(y))
         num_classes = len(self.classes_)
@@ -148,7 +178,6 @@ class HCRF(object):
         # Initialise the parameters
         _, num_features = X[0].shape
         num_transitions, _ = self.transitions.shape
-        numpy.random.seed(self._random_seed)
         if self.state_parameters is None:
             self.state_parameters = (
                 numpy.random.standard_normal(
@@ -192,37 +221,38 @@ class HCRF(object):
         return self
 
     def predict(self, X):
-        """Predict the class for X.
+        """Predict the class for each sample in ``X``.
 
-        The predicted class for each sample in X is returned.
+        Arguments:
+            X (array, shape :math:`(n_samples, n_timesteps, n_features)`): The
+                samples to predict labels for. **Samples must have the same
+                number of features as the samples used for training**.
 
-        Parameters
-        ----------
-        X : List of list of ints, one list of ints for each training example.
+        Returns:
+            array, shape :math:`(n_samples)`: An array containing the class
+            label with the highest probability for each sample of ``X``. Use
+            :py:`HCRF.predict_marginals` to access all class probabilities
 
-        Returns
-        -------
-        y : iterable of shape = [n_samples]
-            The predicted classes.
         """
         preds = self.predict_marginals(X)
-        return [max(pred, key=pred.__getitem__) for pred in preds]
+        return numpy.array([max(pred, key=pred.__getitem__) for pred in preds])
 
     def predict_marginals(self, X):
-        """Probability estimates.
+        """Estimate all class probabilities for each sample in ``X``.
 
         The returned estimates for all classes are ordered by the
         label of classes.
 
-        Parameters
-        ----------
-        X : List of ndarrays, one for each training example.
+        Arguments:
+            X (array, shape :math:`(n_samples, n_timesteps, n_features)`): The
+                samples to predict labels for. **Samples must have the same
+                number of features as the samples used for training**.
 
-        Returns
-        -------
-        T : array-like, shape = [n_samples, n_classes]
-            Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in ``self.classes_``.
+        Returns:
+            array, shape :math:`(n_samples)`: An array containing dictionaries
+            mapping class labels to the prediction probability for each sample
+            of ``X``.
+
         """
         y = []
         for x in X:
