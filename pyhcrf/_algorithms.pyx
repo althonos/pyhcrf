@@ -4,7 +4,7 @@
 # Copyright (c) 2020, Martin Larralde
 # Copyright (c) 2013-2016, Dirko Coetsee
 
-from libc.stdint cimport int32_t, uint32_t, int64_t
+from libc.stdint cimport uint8_t, int32_t, uint32_t, int64_t
 from libc.stddef cimport size_t
 from libc.string cimport memset
 from libc.stdio cimport printf
@@ -30,9 +30,19 @@ cpdef float64_t regularize_l1(
     ndarray[float64_t, ndim=1] gradient,
     float64_t c1,
     ndarray[float64_t, ndim=1] parameters,
+    bint clipping=True,
 ):
+    # clipping = True to enable SDG-L1-Clipping as described in
+    # this paper: https://dl.acm.org/doi/pdf/10.5555/1687878.1687946
+
+    cdef ndarray[uint8_t, ndim=1] clip
     ll -= c1 * numpy.abs(parameters).sum()
-    gradient -= c1 * sign(parameters)
+    if clipping:
+        clip = (gradient < c1) & (gradient > -c1)
+        gradient -= c1 * sign(parameters)
+        gradient *= ~clip
+    else:
+        gradient -= c1 * sign(parameters)
     return ll
 
 
