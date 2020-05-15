@@ -25,24 +25,26 @@ cpdef ndarray sign(ndarray x):
     return (0.0 < x[:]).astype(x.dtype) - (x[:] < 0.0)
 
 
-cpdef float64_t regularize_l1(
+cpdef float64_t regularize_l1_naive(
     float64_t ll,
     ndarray[float64_t, ndim=1] gradient,
     float64_t c1,
     ndarray[float64_t, ndim=1] parameters,
-    object strategy="clipping",
 ):
-    # clipping = True to enable SDG-L1-Clipping as described in
-    # this paper: https://dl.acm.org/doi/pdf/10.5555/1687878.1687946
-
-    cdef ndarray[uint8_t, ndim=1] clip
+    gradient -= c1 * sign(parameters)
     ll -= c1 * numpy.abs(parameters).sum()
-    if strategy == "naive":
-        gradient -= c1 * sign(parameters)
-    else:
-        clip = (gradient < c1) & (gradient > -c1)
-        gradient -= c1 * sign(parameters)
-        gradient *= ~clip
+    return ll
+
+cpdef float64_t regularize_l1_clipping(
+    float64_t ll,
+    ndarray[float64_t, ndim=1] gradient,
+    float64_t c1,
+    ndarray[float64_t, ndim=1] parameters,
+):
+    cdef ndarray[uint8_t, ndim=1] mask = (gradient < c1) & (gradient > -c1)
+    ll -= c1 * numpy.abs(parameters).sum()
+    gradient -= c1 * sign(parameters)
+    gradient *= ~mask
     return ll
 
 

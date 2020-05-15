@@ -9,7 +9,13 @@ import numpy
 from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from scipy.optimize import minimize
 
-from ._algorithms import forward_backward, _log_likelihood, regularize_l1, regularize_l2
+from ._algorithms import (
+    forward_backward,
+    _log_likelihood,
+    regularize_l1_naive,
+    regularize_l1_clipping,
+    regularize_l2
+)
 
 
 class _ObjectiveFunction(object):
@@ -19,6 +25,10 @@ class _ObjectiveFunction(object):
         self.y = y
         self.hcrf = hcrf
         self.classes_map = {cls:i for i,cls in enumerate(hcrf.classes_)}
+
+        # store references to the right regularization functions
+        self._regularize_l1 = hcrf._regularize_l1
+        self._regularize_l2 = regularize_l2
 
         # allocate buffers only once to allow reusing them in several calls;
         # parameters gradient buffer are allocated contiguously to avoid having
@@ -55,9 +65,9 @@ class _ObjectiveFunction(object):
 
         # L1/L2 regularization if required
         if self.hcrf.c1 > 0.0:
-            ll = regularize_l1(ll, gradient, self.hcrf.c1, parameters_without_bias, self.hcrf.l1_strategy)
+            ll = self._regularize_l1(ll, gradient, self.hcrf.c1, parameters_without_bias)
         if self.hcrf.c2 > 0.0:
-            ll = regularize_l2(ll, gradient, self.hcrf.c2, parameters_without_bias)
+            ll = self._regularize_l2(ll, gradient, self.hcrf.c2, parameters_without_bias)
 
         # We want to maximize the log-likelihood, so we minizime the opposite
         return -ll, -gradient
@@ -75,6 +85,13 @@ class HCRF(object):
             or `None` is the model has not been fitted yet.
 
     """
+
+    _L1_STRATEGY = {
+        "naive": regularize_l1_naive,
+        "clipping": regularize_l1_clipping,
+        # TODO: implement penalty
+        "penalty": regularize_l1_clipping,
+    }
 
     def __init__(
         self,
@@ -126,8 +143,6 @@ class HCRF(object):
         """
         if num_states <= 0:
             raise ValueError("num_states must be strictly positive, not {}".format(num_states))
-        if l1_strategy not in {"naive", "clipping", "penalty"}:
-            raise ValueError("unknown value for l1_strategy: {}".format(l1_strategy))
 
         # Make sure to store transitions in a numpy array of `int64`,
         # otherwise could cause error when calling `_algorithms` functions.
@@ -135,6 +150,13 @@ class HCRF(object):
             self.transitions = numpy.array(transitions, dtype="int64")
         else:
             self.transitions = transitions
+
+        # use the appropriate L1 regularization function depending on the
+        # chosen strategy
+        if l1_strategy in self._L1_STRATEGY:
+            self._regularize_l1 = self._L1_STRATEGY[l1_strategy]
+        else:
+            raise ValueError("unknown value for l1_strategy: {}".format(l1_strategy))
 
         # Attributes provided for compatibility with sklearn_crfsuite.CRF
         self.classes_ = None
@@ -178,6 +200,8 @@ class HCRF(object):
         # Initialise the parameters
         _, num_features = X[0].shape
         num_transitions, _ = self.transitions.shape
+        # state_parameters_shape = (num_features, self.num_states, num_classes)
+        # state_parameters_count = numpy.prod(state_parameter_shape)
         if self.state_parameters is None:
             self.state_parameters = (
                 numpy.random.standard_normal(
