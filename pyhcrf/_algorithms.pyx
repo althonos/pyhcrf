@@ -21,6 +21,9 @@ cdef extern from "logaddexp.h":
     double logaddexp(double x, double y) nogil
 
 
+# ----------------------------------------------------------------------------
+
+
 cpdef ndarray sign(ndarray x):
     return (0.0 < x[:]).astype(x.dtype) - (x[:] < 0.0)
 
@@ -128,6 +131,50 @@ cpdef forward_backward(
                 )
 
     return forward_table, forward_transition_table, backward_table
+
+cpdef ndarray[float64_t, ndim=3] forward(
+    ndarray[float64_t, ndim=3] x_dot_parameters,
+    ndarray[float64_t, ndim=3] state_parameters,
+    ndarray[float64_t, ndim=1] transition_parameters,
+    ndarray[int64_t, ndim=2] transitions,
+):
+    cdef uint32_t class_number, s0, s1
+    cdef float64_t edge_potential
+    cdef size_t n_classes, n_states, n_time_steps, n_transitions, t
+    cdef ndarray[float64_t, ndim=3] forward_table, backward_table
+    cdef ndarray[float64_t, ndim=4] forward_transition_table
+
+    # Extract dimensions of the input tables
+    n_time_steps = x_dot_parameters.shape[0]
+    n_states = state_parameters.shape[1]
+    n_classes = state_parameters.shape[2]
+    n_transitions = transitions.shape[0]
+
+    # Add extra 1 time step for start state
+    forward_table = numpy.full(
+        (n_time_steps + 1, n_states, n_classes),
+        fill_value=-inf,
+        dtype='float64'
+    )
+    forward_table[0, 0, :] = 0.0
+
+    with nogil:
+        # Compute forward transitions
+        for t in range(1, n_time_steps + 1):
+            for transition in range(n_transitions):
+                class_number = transitions[transition, 0]
+                s0 = transitions[transition, 1]
+                s1 = transitions[transition, 2]
+                edge_potential = forward_table[t - 1, s0, class_number] + transition_parameters[transition]
+                forward_table[t, s1, class_number] = logaddexp(
+                    forward_table[t, s1, class_number],
+                    edge_potential + x_dot_parameters[t - 1, s1, class_number]
+                )
+
+    return forward_table
+
+
+# ----------------------------------------------------------------------------
 
 
 def log_likelihood(

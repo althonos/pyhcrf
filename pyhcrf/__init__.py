@@ -10,7 +10,7 @@ from scipy.optimize.lbfgsb import fmin_l_bfgs_b
 from scipy.optimize import minimize
 
 from ._algorithms import (
-    forward_backward,
+    forward,
     _log_likelihood,
     regularize_l1_naive,
     regularize_l1_clipping,
@@ -291,7 +291,7 @@ class HCRF(object):
             x_dot_parameters = x.dot(
                 self.state_parameters.reshape(n_features, -1)
             ).reshape((n_time_steps, n_states, n_classes))
-            forward_table, _, _ = forward_backward(
+            forward_table = forward(
                 x_dot_parameters,
                 self.state_parameters,
                 self.transition_parameters,
