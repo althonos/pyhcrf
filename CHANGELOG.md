@@ -5,7 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pyrodigal/compare/3441ac4...HEAD
+[Unreleased]: https://github.com/althonos/pyhcrf/compare/v0.1.0...HEAD
+
+## [v0.1.0] - 2020-05-16
+[v0.1.0]: https://github.com/althonos/pyhcrf/compare/3441ac4...v0.1.0
 ### Added
 - Python 3 support.
 - Proper `setuptools` configuration file listing all dependencies.
