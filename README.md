@@ -2,7 +2,7 @@
 
 *A hidden (state) conditional random field (__HCRF__) written in Python and Cython.*
 
-[![TravisCI](https://img.shields.io/travis/althonos/pyhcrf/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyhcrf/branches)
+[![TravisCI](https://img.shields.io/travis/com/althonos/pyhcrf/master.svg?logo=travis&maxAge=600&style=flat-square)](https://travis-ci.com/althonos/pyhcrf/branches)
 [![AppVeyor](https://img.shields.io/appveyor/ci/althonos/pyhcrf/master?logo=appveyor&style=flat-square&maxAge=600)](https://ci.appveyor.com/project/althonos/pyhcrf)
 [![Coverage](https://img.shields.io/codecov/c/gh/althonos/pyhcrf?style=flat-square&maxAge=3600)](https://codecov.io/gh/althonos/pyhcrf/)
 [![License](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg?style=flat-square&maxAge=2678400)](https://choosealicense.com/licenses/bsd-2-clause/)
